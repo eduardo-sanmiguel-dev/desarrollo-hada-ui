@@ -16,44 +16,21 @@ const reasonsHttp = createScopedClient("/reasons-for-request");
 const projectsHttp = createScopedClient("/projects");
 
 export const personnelRequisitionRelatedService = {
-  /**
-   * Get all areas
-   */
   getAreas() {
     return areasHttp.get<Area[]>("/");
   },
-
-  /**
-   * Get all workplaces
-   */
   getWorkplaces() {
     return workplacesHttp.get<Workplace[]>("/");
   },
-
-  /**
-   * Get all employee positions
-   */
   getPositions() {
     return employeesHttp.get<EmployeePosition[]>("/positions");
   },
-
-  /**
-   * Get all reasons for request
-   */
   getReasonsForRequest() {
     return reasonsHttp.get<ReasonForRequest[]>("/");
   },
-
-  /**
-   * Get employees available for replacement (where replacedBy is null)
-   */
   getEmployeesForReplacement() {
     return employeesHttp.get<Employee[]>("/?replacedBy=null");
   },
-
-  /**
-   * Get all projects
-   */
   getProjects() {
     return projectsHttp.get<Project[]>("/");
   },

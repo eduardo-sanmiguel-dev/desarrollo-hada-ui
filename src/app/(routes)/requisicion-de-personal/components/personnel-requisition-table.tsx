@@ -2,6 +2,7 @@ import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import {
   Box,
   Chip,
@@ -13,6 +14,7 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
@@ -20,6 +22,8 @@ import type { ReactNode } from "react";
 
 import { PersonnelRequisition } from "@/types/personnel-requisition.types";
 import { APP_COLORS } from "@/theme/tokens";
+import { usePermissions } from "@/hooks";
+import { AUTHORIZE_REQUEST } from "@/constants";
 
 export type SortField =
   | "id"
@@ -49,6 +53,7 @@ type PersonnelRequisitionTableProps = {
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onDelete: (requisition: PersonnelRequisition) => void;
+  onAuthorize: (requisition: PersonnelRequisition) => void;
 };
 
 export const PersonnelRequisitionTable = ({
@@ -66,7 +71,10 @@ export const PersonnelRequisitionTable = ({
   onView,
   onEdit,
   onDelete,
+  onAuthorize,
 }: PersonnelRequisitionTableProps) => {
+  const permissions = usePermissions();
+
   return (
     <>
       <Table
@@ -267,39 +275,88 @@ export const PersonnelRequisitionTable = ({
               </TableCell>
               <TableCell>
                 <Stack direction="row" spacing={0.5}>
-                  <IconButton
-                    size="small"
-                    onClick={() => onView(requisition.id)}
-                    sx={{
-                      color: "info.main",
-                      border: `1px solid ${alpha(APP_COLORS.secondary, 0.18)}`,
-                    }}
-                    aria-label={`Ver detalle solicitud ${requisition.id}`}
-                  >
-                    <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => onEdit(requisition.id)}
-                    sx={{
-                      color: alpha(APP_COLORS.primary, 0.95),
-                      border: `1px solid ${alpha(APP_COLORS.primary, 0.28)}`,
-                    }}
-                    aria-label={`Editar solicitud ${requisition.id}`}
-                  >
-                    <EditRoundedIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => onDelete(requisition)}
-                    sx={{
-                      color: "error.main",
-                      border: `1px solid ${alpha(APP_COLORS.secondary, 0.18)}`,
-                    }}
-                    aria-label={`Eliminar solicitud ${requisition.id}`}
-                  >
-                    <DeleteRoundedIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
+                  {permissions.includes(AUTHORIZE_REQUEST) && (
+                    <Tooltip title="Autorizar" arrow>
+                      <IconButton
+                        size="small"
+                        onClick={() => onAuthorize(requisition)}
+                        sx={{
+                          color: "success.main",
+                          borderRadius: "8px",
+                          border: `1px solid ${alpha(APP_COLORS.secondary, 0.3)}`,
+                          backgroundColor: alpha(APP_COLORS.secondary, 0.04),
+                          width: 30,
+                          height: 30,
+                          "&:hover": {
+                            backgroundColor: alpha(APP_COLORS.secondary, 0.12),
+                          },
+                        }}
+                        aria-label={`Autorizar solicitud ${requisition.id}`}
+                      >
+                        <VerifiedRoundedIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="Ver" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => onView(requisition.id)}
+                      sx={{
+                        color: "info.main",
+                        borderRadius: "8px",
+                        border: `1px solid ${alpha(APP_COLORS.secondary, 0.3)}`,
+                        backgroundColor: alpha(APP_COLORS.surface, 0.04),
+                        width: 30,
+                        height: 30,
+                        "&:hover": {
+                          backgroundColor: alpha(APP_COLORS.secondary, 0.14),
+                        },
+                      }}
+                      aria-label={`Ver detalle solicitud ${requisition.id}`}
+                    >
+                      <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Editar" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => onEdit(requisition.id)}
+                      sx={{
+                        color: alpha(APP_COLORS.primary, 0.95),
+                        borderRadius: "8px",
+                        border: `1px solid ${alpha(APP_COLORS.primary, 0.34)}`,
+                        backgroundColor: alpha(APP_COLORS.primary, 0.06),
+                        width: 30,
+                        height: 30,
+                        "&:hover": {
+                          backgroundColor: alpha(APP_COLORS.primary, 0.14),
+                        },
+                      }}
+                      aria-label={`Editar solicitud ${requisition.id}`}
+                    >
+                      <EditRoundedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Eliminar" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => onDelete(requisition)}
+                      sx={{
+                        color: "error.main",
+                        borderRadius: "8px",
+                        border: `1px solid ${alpha(APP_COLORS.secondary, 0.3)}`,
+                        backgroundColor: alpha(APP_COLORS.secondary, 0.04),
+                        width: 30,
+                        height: 30,
+                        "&:hover": {
+                          backgroundColor: alpha(APP_COLORS.secondary, 0.12),
+                        },
+                      }}
+                      aria-label={`Eliminar solicitud ${requisition.id}`}
+                    >
+                      <DeleteRoundedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
                 </Stack>
               </TableCell>
             </TableRow>

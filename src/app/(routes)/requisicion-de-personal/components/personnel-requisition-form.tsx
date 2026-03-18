@@ -33,7 +33,10 @@ import { personnelRequisitionRelatedService } from "@/services/personnel-requisi
 type PersonnelRequisitionFormProps = {
   isEditing: boolean;
   isReadOnly?: boolean;
+  canAuthorize?: boolean;
+  isAuthorizing?: boolean;
   initialData?: PersonnelRequisition;
+  onAuthorize?: () => void;
   onCancel: () => void;
   onSubmit: (
     payload: CreatePersonnelRequisitionDto | UpdatePersonnelRequisitionDto,
@@ -51,7 +54,10 @@ type ValidationErrors = {
 export const PersonnelRequisitionForm = ({
   isEditing,
   isReadOnly = false,
+  canAuthorize = false,
+  isAuthorizing = false,
   initialData,
+  onAuthorize,
   onCancel,
   onSubmit,
 }: PersonnelRequisitionFormProps) => {
@@ -503,10 +509,21 @@ export const PersonnelRequisitionForm = ({
 
       {/* Action Buttons */}
       <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+        {isReadOnly && canAuthorize ? (
+          <Button
+            variant="contained"
+            color="success"
+            disabled={isAuthorizing}
+            onClick={onAuthorize}
+            sx={{ borderRadius: "10px" }}
+          >
+            {isAuthorizing ? "Autorizando..." : "Autorizar"}
+          </Button>
+        ) : null}
         <Button
           variant="outlined"
           onClick={onCancel}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isAuthorizing}
           sx={{
             borderRadius: "10px",
             borderColor: alpha(APP_COLORS.primary, 0.35),

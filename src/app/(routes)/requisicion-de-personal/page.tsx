@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { PersonnelRequisitionForm } from "./components/personnel-requisition-form";
@@ -32,7 +32,10 @@ import {
   CreatePersonnelRequisitionDto,
   UpdatePersonnelRequisitionDto,
 } from "@/types/personnel-requisition.types";
-import { personnelRequisitionsService } from "@/services/personnel-requisitions.service";
+import { personnelRequisitionsService } from "@/services";
+import { usePermissions } from "@/hooks";
+import { AUTHORIZE_REQUEST, CREATE_REQUEST } from "@/constants";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type SortDirection = "asc" | "desc" | null;
 type FormMode = "create" | "edit" | "view" | null;
@@ -41,6 +44,11 @@ const PersonnelRequisitionPage = () => {
   const { mode, systemMode } = useColorScheme();
   const effectiveMode = mode === "system" ? systemMode : mode;
   const isDarkMode = effectiveMode === "dark";
+  const permissions = usePermissions();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const openedViewIdRef = useRef<number | null>(null);
 
   const [requisitions, setRequisitions] = useState<PersonnelRequisition[]>([]);
   const [totalRequisitions, setTotalRequisitions] = useState(0);
@@ -61,12 +69,15 @@ const PersonnelRequisitionPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<PersonnelRequisition | null>(
     null,
   );
+  const [authorizeTarget, setAuthorizeTarget] =
+    useState<PersonnelRequisition | null>(null);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -151,6 +162,16 @@ const PersonnelRequisitionPage = () => {
     setFormMode(null);
     setEditingRequisitionId(null);
     setEditingRequisitionData(null);
+
+    if (searchParams.has("viewId")) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("viewId");
+      const nextUrl = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+      router.replace(nextUrl, { scroll: false });
+      openedViewIdRef.current = null;
+    }
   };
 
   const handleOpenEditForm = async (id: number) => {
@@ -188,6 +209,25 @@ const PersonnelRequisitionPage = () => {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    const viewIdRaw = searchParams.get("viewId");
+    if (!viewIdRaw) {
+      return;
+    }
+
+    const viewId = Number(viewIdRaw);
+    if (!Number.isInteger(viewId) || viewId <= 0) {
+      return;
+    }
+
+    if (openedViewIdRef.current === viewId) {
+      return;
+    }
+
+    openedViewIdRef.current = viewId;
+    void handleOpenViewForm(viewId);
+  }, [searchParams, handleOpenViewForm]);
 
   const handleSaveRequisition = async (
     payload: CreatePersonnelRequisitionDto | UpdatePersonnelRequisitionDto,
@@ -250,6 +290,48 @@ const PersonnelRequisitionPage = () => {
     handleDeleteRequisition(deleteTarget.id);
   };
 
+  const handleAuthorizeRequisition = async (
+    requisitionToAuthorize?: PersonnelRequisition | null,
+  ) => {
+    const target = requisitionToAuthorize ?? authorizeTarget;
+
+    if (!target) {
+      return;
+    }
+
+    try {
+      setIsAuthorizing(true);
+      setError(null);
+
+      await personnelRequisitionsService.createAuthorizationRequest({
+        requisitionId: target.id,
+      });
+
+      setAuthorizeTarget(null);
+      setEditingRequisitionData((current) =>
+        current && current.id === target.id
+          ? { ...current, isAuthorized: true }
+          : current,
+      );
+      await loadRequisitions();
+      setSuccessMessage("Solicitud autorizada exitosamente");
+
+      if (isFormOpen) {
+        closeForm();
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al autorizar la solicitud";
+      setError(errorMessage);
+      console.error(err);
+    } finally {
+      setIsAuthorizing(false);
+    }
+  };
+
   const sortLabel = (field: SortField) => {
     if (sortField !== field || !sortDirection) {
       return "null";
@@ -307,7 +389,16 @@ const PersonnelRequisitionPage = () => {
       <PersonnelRequisitionForm
         isEditing={formMode === "edit"}
         isReadOnly={formMode === "view"}
+        isAuthorizing={isAuthorizing}
+        canAuthorize={
+          formMode === "view" &&
+          permissions.includes(AUTHORIZE_REQUEST) &&
+          !editingRequisitionData?.isAuthorized
+        }
         initialData={editingRequisitionData ?? undefined}
+        onAuthorize={() =>
+          void handleAuthorizeRequisition(editingRequisitionData)
+        }
         onCancel={closeForm}
         onSubmit={handleSaveRequisition}
       />
@@ -388,22 +479,24 @@ const PersonnelRequisitionPage = () => {
           justifyContent="flex-end"
           sx={{ minWidth: { lg: "fit-content" } }}
         >
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={openCreateForm}
-            sx={{
-              bgcolor: APP_COLORS.primary,
-              color: APP_COLORS.surface,
-              borderRadius: "12px",
-              px: 2,
-              "&:hover": {
-                bgcolor: alpha(APP_COLORS.primary, 0.9),
-              },
-            }}
-          >
-            Crear
-          </Button>
+          {permissions.includes(CREATE_REQUEST) && (
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={openCreateForm}
+              sx={{
+                bgcolor: APP_COLORS.primary,
+                color: APP_COLORS.surface,
+                borderRadius: "12px",
+                px: 2,
+                "&:hover": {
+                  bgcolor: alpha(APP_COLORS.primary, 0.9),
+                },
+              }}
+            >
+              Crear
+            </Button>
+          )}
 
           <Button
             variant="outlined"
@@ -465,6 +558,7 @@ const PersonnelRequisitionPage = () => {
             onView={handleOpenViewForm}
             onEdit={handleOpenEditForm}
             onDelete={(requisition) => setDeleteTarget(requisition)}
+            onAuthorize={(requisition) => setAuthorizeTarget(requisition)}
           />
         )}
       </Card>
@@ -499,6 +593,41 @@ const PersonnelRequisitionPage = () => {
             sx={{ borderRadius: "10px" }}
           >
             Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(authorizeTarget)}
+        onClose={() => setAuthorizeTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Confirmar autorización
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {authorizeTarget
+              ? `Se autorizará la solicitud de personal ID: ${authorizeTarget.id} del área "${authorizeTarget.area?.name}".`
+              : "Se autorizará la solicitud de personal seleccionada."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setAuthorizeTarget(null)}
+            sx={{ color: "text.secondary" }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={() => void handleAuthorizeRequisition()}
+            disabled={isAuthorizing}
+            sx={{ borderRadius: "10px" }}
+          >
+            {isAuthorizing ? "Autorizando..." : "Autorizar"}
           </Button>
         </DialogActions>
       </Dialog>

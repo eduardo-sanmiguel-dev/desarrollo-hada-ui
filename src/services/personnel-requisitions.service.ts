@@ -27,4 +27,9 @@ export const personnelRequisitionsService = {
   delete(id: number) {
     return httpClient.delete<{ message: string }>(`/${id}`);
   },
+  createAuthorizationRequest({ requisitionId }: { requisitionId: number }) {
+    return httpClient.post<{ message: string }>(
+      `/authorize-request/${requisitionId}`,
+    );
+  },
 };
