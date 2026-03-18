@@ -32,6 +32,7 @@ import { personnelRequisitionRelatedService } from "@/services/personnel-requisi
 
 type PersonnelRequisitionFormProps = {
   isEditing: boolean;
+  isReadOnly?: boolean;
   initialData?: PersonnelRequisition;
   onCancel: () => void;
   onSubmit: (
@@ -49,6 +50,7 @@ type ValidationErrors = {
 
 export const PersonnelRequisitionForm = ({
   isEditing,
+  isReadOnly = false,
   initialData,
   onCancel,
   onSubmit,
@@ -148,6 +150,10 @@ export const PersonnelRequisitionForm = ({
   }, [initialData, notifyError]);
 
   const handleSubmit = async () => {
+    if (isReadOnly) {
+      return;
+    }
+
     const nextErrors: ValidationErrors = {};
 
     if (!area) {
@@ -237,11 +243,14 @@ export const PersonnelRequisitionForm = ({
             letterSpacing: -0.25,
           }}
         >
-          {isEditing ? "Editar" : "Crear"} Solicitud de Personal
+          {isReadOnly
+            ? "Detalle de Solicitud de Personal"
+            : `${isEditing ? "Editar" : "Crear"} Solicitud de Personal`}
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-          Complete los campos requeridos para{" "}
-          {isEditing ? "actualizar" : "crear"} una solicitud
+          {isReadOnly
+            ? "Consulta de la información registrada en la solicitud"
+            : `Complete los campos requeridos para ${isEditing ? "actualizar" : "crear"} una solicitud`}
         </Typography>
       </Box>
 
@@ -261,6 +270,7 @@ export const PersonnelRequisitionForm = ({
                 Área *
               </Typography>
               <Autocomplete
+                disabled={isReadOnly}
                 options={areas}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -287,6 +297,7 @@ export const PersonnelRequisitionForm = ({
                 Centro de Trabajo *
               </Typography>
               <Autocomplete
+                disabled={isReadOnly}
                 options={workplaces}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -313,6 +324,7 @@ export const PersonnelRequisitionForm = ({
                 Puesto Requerido *
               </Typography>
               <Autocomplete
+                disabled={isReadOnly}
                 options={positions}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -344,6 +356,7 @@ export const PersonnelRequisitionForm = ({
                 value={numberOfVacancies}
                 autoComplete="off"
                 type="text"
+                disabled={isReadOnly}
                 onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
                   const blockedKeys = ["e", "E", "+", "-", "."];
                   if (blockedKeys.includes(event.key)) {
@@ -379,6 +392,7 @@ export const PersonnelRequisitionForm = ({
                 control={
                   <Switch
                     checked={isExternal}
+                    disabled={isReadOnly}
                     onChange={(e) => setIsExternal(e.target.checked)}
                   />
                 }
@@ -392,6 +406,7 @@ export const PersonnelRequisitionForm = ({
                 Motivo de Requerimiento *
               </Typography>
               <Autocomplete
+                disabled={isReadOnly}
                 options={reasons}
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -418,6 +433,7 @@ export const PersonnelRequisitionForm = ({
                 Usuarios que Remplaza (Opcional)
               </Typography>
               <Autocomplete
+                disabled={isReadOnly}
                 multiple
                 options={employees}
                 getOptionLabel={(employee) => employee.name}
@@ -442,6 +458,7 @@ export const PersonnelRequisitionForm = ({
                 Proyecto a Desarrollar (Opcional)
               </Typography>
               <Autocomplete
+                disabled={isReadOnly}
                 freeSolo
                 options={projectOptions}
                 value={projectReplacedName}
@@ -474,6 +491,7 @@ export const PersonnelRequisitionForm = ({
                 multiline
                 rows={3}
                 value={observations}
+                disabled={isReadOnly}
                 onChange={(e) => setObservations(e.target.value)}
                 placeholder="Ingrese observaciones adicionales"
                 size="small"
@@ -495,32 +513,34 @@ export const PersonnelRequisitionForm = ({
             color: "text.primary",
           }}
         >
-          Cancelar
+          {isReadOnly ? "Cerrar" : "Cancelar"}
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          sx={{
-            bgcolor: APP_COLORS.primary,
-            color: APP_COLORS.surface,
-            borderRadius: "10px",
-            "&:hover": {
-              bgcolor: alpha(APP_COLORS.primary, 0.9),
-            },
-          }}
-        >
-          {isSubmitting ? (
-            <>
-              <CircularProgress size={16} sx={{ mr: 1 }} />
-              Guardando...
-            </>
-          ) : isEditing ? (
-            "Actualizar"
-          ) : (
-            "Crear"
-          )}
-        </Button>
+        {!isReadOnly ? (
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            sx={{
+              bgcolor: APP_COLORS.primary,
+              color: APP_COLORS.surface,
+              borderRadius: "10px",
+              "&:hover": {
+                bgcolor: alpha(APP_COLORS.primary, 0.9),
+              },
+            }}
+          >
+            {isSubmitting ? (
+              <>
+                <CircularProgress size={16} sx={{ mr: 1 }} />
+                Guardando...
+              </>
+            ) : isEditing ? (
+              "Actualizar"
+            ) : (
+              "Crear"
+            )}
+          </Button>
+        ) : null}
       </Stack>
     </Stack>
   );

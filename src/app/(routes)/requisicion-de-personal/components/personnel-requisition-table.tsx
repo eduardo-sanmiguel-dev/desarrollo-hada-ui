@@ -1,4 +1,7 @@
 import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Box,
   Chip,
@@ -43,6 +46,9 @@ type PersonnelRequisitionTableProps = {
   onRowsPerPageChange: (nextRowsPerPage: number) => void;
   renderHighlightedText: (value: string | number) => ReactNode;
   hasSearchTerm: boolean;
+  onView: (id: number) => void;
+  onEdit: (id: number) => void;
+  onDelete: (requisition: PersonnelRequisition) => void;
 };
 
 export const PersonnelRequisitionTable = ({
@@ -57,6 +63,9 @@ export const PersonnelRequisitionTable = ({
   onRowsPerPageChange,
   renderHighlightedText,
   hasSearchTerm,
+  onView,
+  onEdit,
+  onDelete,
 }: PersonnelRequisitionTableProps) => {
   return (
     <>
@@ -135,6 +144,18 @@ export const PersonnelRequisitionTable = ({
                 </Stack>
               </TableCell>
             ))}
+            <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: APP_COLORS.surface,
+                }}
+              >
+                Acciones
+              </Typography>
+            </TableCell>
           </TableRow>
         </TableHead>
 
@@ -244,12 +265,49 @@ export const PersonnelRequisitionTable = ({
                   )}
                 </Typography>
               </TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={0.5}>
+                  <IconButton
+                    size="small"
+                    onClick={() => onView(requisition.id)}
+                    sx={{
+                      color: "info.main",
+                      border: `1px solid ${alpha(APP_COLORS.secondary, 0.18)}`,
+                    }}
+                    aria-label={`Ver detalle solicitud ${requisition.id}`}
+                  >
+                    <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => onEdit(requisition.id)}
+                    sx={{
+                      color: alpha(APP_COLORS.primary, 0.95),
+                      border: `1px solid ${alpha(APP_COLORS.primary, 0.28)}`,
+                    }}
+                    aria-label={`Editar solicitud ${requisition.id}`}
+                  >
+                    <EditRoundedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => onDelete(requisition)}
+                    sx={{
+                      color: "error.main",
+                      border: `1px solid ${alpha(APP_COLORS.secondary, 0.18)}`,
+                    }}
+                    aria-label={`Eliminar solicitud ${requisition.id}`}
+                  >
+                    <DeleteRoundedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Stack>
+              </TableCell>
             </TableRow>
           ))}
 
           {requisitions.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={11}>
+              <TableCell colSpan={12}>
                 <Box
                   sx={{
                     py: 3,

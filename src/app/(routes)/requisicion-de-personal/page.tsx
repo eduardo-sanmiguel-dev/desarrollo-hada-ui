@@ -35,6 +35,7 @@ import {
 import { personnelRequisitionsService } from "@/services/personnel-requisitions.service";
 
 type SortDirection = "asc" | "desc" | null;
+type FormMode = "create" | "edit" | "view" | null;
 
 const PersonnelRequisitionPage = () => {
   const { mode, systemMode } = useColorScheme();
@@ -51,15 +52,18 @@ const PersonnelRequisitionPage = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<FormMode>(null);
   const [editingRequisitionId, setEditingRequisitionId] = useState<
     number | null
   >(null);
+  const [editingRequisitionData, setEditingRequisitionData] =
+    useState<PersonnelRequisition | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PersonnelRequisition | null>(
     null,
   );
 
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -136,13 +140,53 @@ const PersonnelRequisitionPage = () => {
   };
 
   const openCreateForm = () => {
+    setFormMode("create");
     setEditingRequisitionId(null);
+    setEditingRequisitionData(null);
     setIsFormOpen(true);
   };
 
   const closeForm = () => {
     setIsFormOpen(false);
+    setFormMode(null);
     setEditingRequisitionId(null);
+    setEditingRequisitionData(null);
+  };
+
+  const handleOpenEditForm = async (id: number) => {
+    try {
+      setError(null);
+      const response = await personnelRequisitionsService.getById(id);
+      setFormMode("edit");
+      setEditingRequisitionId(id);
+      setEditingRequisitionData(response.data);
+      setIsFormOpen(true);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "No fue posible cargar la solicitud para edición";
+      setError(errorMessage);
+      console.error(err);
+    }
+  };
+
+  const handleOpenViewForm = async (id: number) => {
+    try {
+      setError(null);
+      const response = await personnelRequisitionsService.getById(id);
+      setFormMode("view");
+      setEditingRequisitionId(id);
+      setEditingRequisitionData(response.data);
+      setIsFormOpen(true);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "No fue posible cargar el detalle de la solicitud";
+      setError(errorMessage);
+      console.error(err);
+    }
   };
 
   const handleSaveRequisition = async (
@@ -258,16 +302,12 @@ const PersonnelRequisitionPage = () => {
     });
   };
 
-  const editingRequisition =
-    editingRequisitionId !== null
-      ? (requisitions.find((req) => req.id === editingRequisitionId) ?? null)
-      : null;
-
   if (isFormOpen) {
     return (
       <PersonnelRequisitionForm
-        isEditing={editingRequisitionId !== null}
-        initialData={editingRequisition ?? undefined}
+        isEditing={formMode === "edit"}
+        isReadOnly={formMode === "view"}
+        initialData={editingRequisitionData ?? undefined}
         onCancel={closeForm}
         onSubmit={handleSaveRequisition}
       />
@@ -422,6 +462,9 @@ const PersonnelRequisitionPage = () => {
             }}
             renderHighlightedText={renderHighlightedText}
             hasSearchTerm={Boolean(debouncedSearchTerm)}
+            onView={handleOpenViewForm}
+            onEdit={handleOpenEditForm}
+            onDelete={(requisition) => setDeleteTarget(requisition)}
           />
         )}
       </Card>

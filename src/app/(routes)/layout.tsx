@@ -36,8 +36,10 @@ import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
 import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import MenuOpenRoundedIcon from "@mui/icons-material/MenuOpenRounded";
 
-const drawerWidth = 292;
+const drawerWidthExpanded = 292;
+const drawerWidthCollapsed = 88;
 
 const menuItems = [
   {
@@ -88,6 +90,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const effectiveMode = mode === "system" ? systemMode : mode;
   const isDarkMode = effectiveMode === "dark";
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [isMenuExpanded, setIsMenuExpanded] = useState(false);
   const { isSessionReady, user, userId, setSession, clearSession } =
     useAuthStore();
 
@@ -144,12 +147,18 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const menuMutedText = isDarkMode
     ? alpha(APP_COLORS.surface, 0.82)
     : shellMutedText;
+  const desktopDrawerWidth = isMenuExpanded
+    ? drawerWidthExpanded
+    : drawerWidthCollapsed;
+  const activeDrawerWidth = isDesktop
+    ? desktopDrawerWidth
+    : drawerWidthExpanded;
 
   const menu = (
     <Box
       sx={{
         height: "100%",
-        p: 2,
+        p: isMenuExpanded ? 2 : 1.25,
         display: "flex",
         flexDirection: "column",
         backgroundColor: shellBg,
@@ -166,31 +175,22 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           borderRadius: "50%",
           border: `1px dashed ${alpha(APP_COLORS.surface, 0.34)}`,
         },
-        "&::after": {
-          content: '""',
-          position: "absolute",
-          right: 24,
-          top: 56,
-          width: 54,
-          height: 54,
-          borderRadius: "50%",
-          backgroundColor: isDarkMode
-            ? alpha(APP_COLORS.primary, 0.2)
-            : alpha(APP_COLORS.surface, 0.1),
-        },
       }}
     >
       <Box
         sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: isMenuExpanded ? "flex-start" : "center",
+          justifyContent: "center",
           border: `1px solid ${isDarkMode ? alpha(APP_COLORS.primary, 0.4) : alpha(APP_COLORS.surface, 0.42)}`,
-          borderRadius: 3,
-          p: 2,
+          borderRadius: 1,
+          p: isMenuExpanded ? 1.5 : 1,
           backgroundColor: isDarkMode
-            ? alpha(APP_COLORS.primary, 0.14)
-            : alpha(APP_COLORS.surface, 0.18),
+            ? alpha(APP_COLORS.primary, 0.1)
+            : alpha(APP_COLORS.surface, 0.14),
           color: menuText,
-          boxShadow: `0 12px 24px ${alpha(APP_COLORS.secondary, 0.16)}`,
-          backdropFilter: "blur(2px)",
+          boxShadow: "none",
           position: "relative",
           zIndex: 1,
         }}
@@ -201,19 +201,25 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
             color: menuMutedText,
             letterSpacing: 1,
             fontWeight: 700,
+            display: isMenuExpanded ? "block" : "none",
           }}
         >
           COSMETICOS TRUJILLO
         </Typography>
         <Typography
-          variant="h6"
+          variant={isMenuExpanded ? "h6" : "subtitle2"}
           sx={{
-            mt: 0.5,
+            mt: isMenuExpanded ? 0.5 : 0,
             fontWeight: 800,
             color: menuText,
+            textAlign: isMenuExpanded ? "left" : "center",
+            width: "100%",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          Plataforma de Capital Humano
+          {isMenuExpanded ? "Capital Humano" : "CH"}
         </Typography>
       </Box>
 
@@ -236,6 +242,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                 borderRadius: 2,
                 color: menuText,
                 border: "1px solid transparent",
+                justifyContent: isMenuExpanded ? "flex-start" : "center",
                 backgroundColor: isActive
                   ? isDarkMode
                     ? alpha(APP_COLORS.primary, 0.16)
@@ -265,19 +272,27 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                 },
               }}
             >
-              <ListItemIcon sx={{ color: "inherit", minWidth: 34 }}>
+              <ListItemIcon
+                sx={{
+                  color: "inherit",
+                  minWidth: isMenuExpanded ? 34 : 0,
+                  mr: isMenuExpanded ? 0 : 0,
+                }}
+              >
                 {item.icon}
               </ListItemIcon>
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{
-                  sx: {
-                    color: "inherit",
-                    fontWeight: isActive ? 700 : 500,
-                  },
-                }}
-              />
-              {!item.enabled ? (
+              {isMenuExpanded ? (
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    sx: {
+                      color: "inherit",
+                      fontWeight: isActive ? 700 : 500,
+                    },
+                  }}
+                />
+              ) : null}
+              {!item.enabled && isMenuExpanded ? (
                 <Chip
                   size="small"
                   label="Prox"
@@ -310,16 +325,18 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
               : alpha(APP_COLORS.surface, 0.24),
           }}
         />
-        <Typography
-          variant="caption"
-          sx={{
-            mt: 1.5,
-            display: "block",
-            color: menuMutedText,
-          }}
-        >
-          v2026.03.10
-        </Typography>
+        {isMenuExpanded ? (
+          <Typography
+            variant="caption"
+            sx={{
+              mt: 1.5,
+              display: "block",
+              color: menuMutedText,
+            }}
+          >
+            v2026.03.10
+          </Typography>
+        ) : null}
       </Box>
     </Box>
   );
@@ -412,8 +429,8 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
       <AppBar
         elevation={0}
         sx={{
-          ml: { lg: `${drawerWidth}px` },
-          width: { lg: `calc(100% - ${drawerWidth}px)` },
+          ml: { lg: `${activeDrawerWidth}px` },
+          width: { lg: `calc(100% - ${activeDrawerWidth}px)` },
           backgroundColor: shellBg,
           borderBottom: `1px solid ${
             isDarkMode
@@ -434,7 +451,16 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
             >
               <MenuRoundedIcon />
             </IconButton>
-          ) : null}
+          ) : (
+            <IconButton
+              aria-label={isMenuExpanded ? "Comprimir menu" : "Expandir menu"}
+              onClick={() => setIsMenuExpanded((prev) => !prev)}
+              edge="start"
+              sx={{ mr: 1, color: shellText }}
+            >
+              {isMenuExpanded ? <MenuOpenRoundedIcon /> : <MenuRoundedIcon />}
+            </IconButton>
+          )}
 
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -492,10 +518,10 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
         onClose={() => setMobileDrawerOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
-          width: drawerWidth,
+          width: activeDrawerWidth,
           flexShrink: 0,
           "& .MuiDrawer-paper": {
-            width: drawerWidth,
+            width: activeDrawerWidth,
             borderRight: "none",
             backgroundColor: shellBg,
             boxSizing: "border-box",
@@ -508,7 +534,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
       <Box
         component="main"
         sx={{
-          ml: { lg: `${drawerWidth}px` },
+          ml: { lg: `${activeDrawerWidth}px` },
           mt: "72px",
           minHeight: "calc(100dvh - 72px)",
           p: { xs: 2, md: 3 },
