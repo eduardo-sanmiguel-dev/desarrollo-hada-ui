@@ -88,6 +88,33 @@ export interface CreatePersonnelRequisitionDto {
 
 export interface UpdatePersonnelRequisitionDto extends Partial<CreatePersonnelRequisitionDto> {}
 
+export interface GetPersonnelRequisitionsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortField?:
+    | "id"
+    | "requestDate"
+    | "createdAt"
+    | "numberOfVacancies"
+    | "isExternal"
+    | "reasonForRequest"
+    | "area"
+    | "requestingUser"
+    | "positionRequestingUser"
+    | "workplace"
+    | "positionRequired";
+  sortDirection?: "asc" | "desc";
+}
+
+export interface PaginatedPersonnelRequisitionsResponse {
+  items: PersonnelRequisitionResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // API Response types
 export interface PersonnelRequisitionResponse {
   id: number;

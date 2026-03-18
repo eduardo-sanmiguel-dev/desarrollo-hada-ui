@@ -1,6 +1,8 @@
 import { createScopedClient } from "./http-client";
 import {
   CreatePersonnelRequisitionDto,
+  GetPersonnelRequisitionsQuery,
+  PaginatedPersonnelRequisitionsResponse,
   UpdatePersonnelRequisitionDto,
   PersonnelRequisitionResponse,
 } from "@/types/personnel-requisition.types";
@@ -8,8 +10,10 @@ import {
 const httpClient = createScopedClient("/personnel-requisitions");
 
 export const personnelRequisitionsService = {
-  getAll() {
-    return httpClient.get<PersonnelRequisitionResponse[]>("/");
+  getAll(params?: GetPersonnelRequisitionsQuery) {
+    return httpClient.get<PaginatedPersonnelRequisitionsResponse>("/", {
+      params,
+    });
   },
   getById(id: number) {
     return httpClient.get<PersonnelRequisitionResponse>(`/${id}`);

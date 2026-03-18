@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { APP_COLORS } from "@/theme/tokens";
+import { useNotification } from "@/hooks/use-notification";
 import {
   CreatePersonnelRequisitionDto,
   UpdatePersonnelRequisitionDto,
@@ -38,12 +39,22 @@ type PersonnelRequisitionFormProps = {
   ) => void;
 };
 
+type ValidationErrors = {
+  area?: string;
+  workplace?: string;
+  positionRequired?: string;
+  reasonForRequest?: string;
+  numberOfVacancies?: string;
+};
+
 export const PersonnelRequisitionForm = ({
   isEditing,
   initialData,
   onCancel,
   onSubmit,
 }: PersonnelRequisitionFormProps) => {
+  const { error: notifyError } = useNotification();
+
   // Form state — objects for Autocomplete fields
   const [area, setArea] = useState<Area | null>(initialData?.area ?? null);
   const [workplace, setWorkplace] = useState<Workplace | null>(
@@ -82,6 +93,21 @@ export const PersonnelRequisitionForm = ({
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {},
+  );
+
+  const clearFieldError = (field: keyof ValidationErrors) => {
+    setValidationErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
 
   // Load related data
   useEffect(() => {
@@ -112,25 +138,56 @@ export const PersonnelRequisitionForm = ({
         setProjectOptions(projectsRes.data.map((p) => p.name));
       } catch (error) {
         console.error("Error loading related data:", error);
+        notifyError("No fue posible cargar los datos del formulario.");
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [initialData]);
+  }, [initialData, notifyError]);
 
   const handleSubmit = async () => {
-    if (!area || !workplace || !positionRequired || !reasonForRequest) {
-      alert("Por favor complete todos los campos requeridos");
-      return;
+    const nextErrors: ValidationErrors = {};
+
+    if (!area) {
+      nextErrors.area = "Debes seleccionar un área.";
+    }
+    if (!workplace) {
+      nextErrors.workplace = "Debes seleccionar un centro de trabajo.";
+    }
+    if (!positionRequired) {
+      nextErrors.positionRequired = "Debes seleccionar un puesto requerido.";
+    }
+    if (!reasonForRequest) {
+      nextErrors.reasonForRequest =
+        "Debes seleccionar un motivo de requerimiento.";
     }
 
     const vacancies = parseInt(numberOfVacancies, 10);
-    if (!numberOfVacancies || Number.isNaN(vacancies) || vacancies < 1) {
-      alert("Por favor ingrese un número válido de vacantes (mínimo 1)");
+    if (!numberOfVacancies) {
+      nextErrors.numberOfVacancies = "Debes ingresar el número de vacantes.";
+    } else if (Number.isNaN(vacancies) || !/^[0-9]+$/.test(numberOfVacancies)) {
+      nextErrors.numberOfVacancies =
+        "El número de vacantes debe ser un número entero.";
+    } else if (vacancies < 1) {
+      nextErrors.numberOfVacancies =
+        "El número de vacantes debe ser mayor o igual a 1.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setValidationErrors(nextErrors);
+      notifyError(
+        "Completa los campos obligatorios marcados en el formulario.",
+      );
       return;
     }
+
+    if (!area || !workplace || !positionRequired || !reasonForRequest) {
+      return;
+    }
+
+    setValidationErrors({});
 
     try {
       setIsSubmitting(true);
@@ -208,12 +265,17 @@ export const PersonnelRequisitionForm = ({
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 value={area}
-                onChange={(_, selected) => setArea(selected)}
+                onChange={(_, selected) => {
+                  setArea(selected);
+                  clearFieldError("area");
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     size="small"
                     placeholder="Buscar área"
+                    error={Boolean(validationErrors.area)}
+                    helperText={validationErrors.area}
                   />
                 )}
               />
@@ -229,12 +291,17 @@ export const PersonnelRequisitionForm = ({
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 value={workplace}
-                onChange={(_, selected) => setWorkplace(selected)}
+                onChange={(_, selected) => {
+                  setWorkplace(selected);
+                  clearFieldError("workplace");
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     size="small"
                     placeholder="Buscar centro de trabajo"
+                    error={Boolean(validationErrors.workplace)}
+                    helperText={validationErrors.workplace}
                   />
                 )}
               />
@@ -250,12 +317,17 @@ export const PersonnelRequisitionForm = ({
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 value={positionRequired}
-                onChange={(_, selected) => setPositionRequired(selected)}
+                onChange={(_, selected) => {
+                  setPositionRequired(selected);
+                  clearFieldError("positionRequired");
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     size="small"
                     placeholder="Buscar puesto"
+                    error={Boolean(validationErrors.positionRequired)}
+                    helperText={validationErrors.positionRequired}
                   />
                 )}
               />
@@ -269,18 +341,36 @@ export const PersonnelRequisitionForm = ({
               <TextField
                 fullWidth
                 size="small"
-                type="number"
                 value={numberOfVacancies}
+                autoComplete="off"
+                type="text"
+                onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                  const blockedKeys = ["e", "E", "+", "-", "."];
+                  if (blockedKeys.includes(event.key)) {
+                    event.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === "" || /^[0-9]+$/.test(value)) {
                     setNumberOfVacancies(value);
+                    clearFieldError("numberOfVacancies");
                   }
                 }}
-                inputProps={{ min: 1, step: 1 }}
                 placeholder="Ingrese el número de vacantes"
+                error={Boolean(validationErrors.numberOfVacancies)}
+                inputProps={{
+                  inputMode: "numeric",
+                  pattern: "[0-9]*",
+                  min: 1,
+                  step: 1,
+                }}
               />
-              <FormHelperText>Mínimo 1 vacante</FormHelperText>
+              <FormHelperText
+                error={Boolean(validationErrors.numberOfVacancies)}
+              >
+                {validationErrors.numberOfVacancies ?? "Mínimo 1 vacante"}
+              </FormHelperText>
             </Box>
 
             {/* Conveying Type */}
@@ -306,12 +396,17 @@ export const PersonnelRequisitionForm = ({
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 value={reasonForRequest}
-                onChange={(_, selected) => setReasonForRequest(selected)}
+                onChange={(_, selected) => {
+                  setReasonForRequest(selected);
+                  clearFieldError("reasonForRequest");
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     size="small"
                     placeholder="Buscar motivo"
+                    error={Boolean(validationErrors.reasonForRequest)}
+                    helperText={validationErrors.reasonForRequest}
                   />
                 )}
               />

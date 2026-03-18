@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import { PersonnelRequisitionForm } from "./components/personnel-requisition-form";
+import {
+  PersonnelRequisitionTable,
+  SortField,
+} from "./components/personnel-requisition-table";
 import {
   Box,
   Button,
@@ -18,14 +19,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  IconButton,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TablePagination,
-  TableRow,
   TextField,
   Typography,
   CircularProgress,
@@ -40,17 +34,15 @@ import {
 } from "@/types/personnel-requisition.types";
 import { personnelRequisitionsService } from "@/services/personnel-requisitions.service";
 
-type SortField = "id" | "requestDate" | "numberOfVacancies" | "isExternal";
 type SortDirection = "asc" | "desc" | null;
 
 const PersonnelRequisitionPage = () => {
   const { mode, systemMode } = useColorScheme();
   const effectiveMode = mode === "system" ? systemMode : mode;
   const isDarkMode = effectiveMode === "dark";
-  const darkRowEven = alpha(APP_COLORS.surface, 0.04);
-  const darkRowOdd = alpha(APP_COLORS.surface, 0.08);
 
   const [requisitions, setRequisitions] = useState<PersonnelRequisition[]>([]);
+  const [totalRequisitions, setTotalRequisitions] = useState(0);
 
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -67,31 +59,34 @@ const PersonnelRequisitionPage = () => {
   );
 
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Load requisitions on component mount
-  useEffect(() => {
-    loadRequisitions();
-  }, []);
-
-  const loadRequisitions = async () => {
+  const loadRequisitions = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await personnelRequisitionsService.getAll();
-      setRequisitions(response.data);
+      const response = await personnelRequisitionsService.getAll({
+        page: page + 1,
+        limit: rowsPerPage,
+        search: debouncedSearchTerm || undefined,
+        sortField: sortField ?? undefined,
+        sortDirection: sortDirection ?? undefined,
+      });
+      setRequisitions(response.data.items);
+      setTotalRequisitions(response.data.total);
     } catch (err) {
       const errorMessage =
         err instanceof Error
@@ -102,7 +97,11 @@ const PersonnelRequisitionPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, rowsPerPage, debouncedSearchTerm, sortField, sortDirection]);
+
+  useEffect(() => {
+    loadRequisitions();
+  }, [loadRequisitions]);
 
   const handleSortToggle = (field: SortField) => {
     if (sortField !== field) {
@@ -125,13 +124,19 @@ const PersonnelRequisitionPage = () => {
     setSortDirection("asc");
   };
 
-  const openCreateForm = () => {
-    setEditingRequisitionId(null);
-    setIsFormOpen(true);
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      // pausa de medio segundo para mostrar el spinner de refresco, ya que la carga suele ser muy rápida
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await loadRequisitions();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const openEditForm = (requisition: PersonnelRequisition) => {
-    setEditingRequisitionId(requisition.id);
+  const openCreateForm = () => {
+    setEditingRequisitionId(null);
     setIsFormOpen(true);
   };
 
@@ -148,22 +153,19 @@ const PersonnelRequisitionPage = () => {
 
       if (editingRequisitionId !== null) {
         // Update existing
-        const response = await personnelRequisitionsService.update(
+        await personnelRequisitionsService.update(
           editingRequisitionId,
           payload as UpdatePersonnelRequisitionDto,
         );
-        setRequisitions((current) =>
-          current.map((req) =>
-            req.id === editingRequisitionId ? response.data : req,
-          ),
-        );
+        await loadRequisitions();
         setSuccessMessage("Solicitud actualizada exitosamente");
       } else {
         // Create new
-        const response = await personnelRequisitionsService.create(
+        await personnelRequisitionsService.create(
           payload as CreatePersonnelRequisitionDto,
         );
-        setRequisitions((current) => [response.data, ...current]);
+        setPage(0);
+        await loadRequisitions();
         setSuccessMessage("Solicitud creada exitosamente");
       }
 
@@ -182,7 +184,7 @@ const PersonnelRequisitionPage = () => {
   const handleDeleteRequisition = async (id: number) => {
     try {
       await personnelRequisitionsService.delete(id);
-      setRequisitions((current) => current.filter((req) => req.id !== id));
+      await loadRequisitions();
       setDeleteTarget(null);
       setSuccessMessage("Solicitud eliminada exitosamente");
 
@@ -196,10 +198,6 @@ const PersonnelRequisitionPage = () => {
     }
   };
 
-  const requestDeleteRequisition = (requisition: PersonnelRequisition) => {
-    setDeleteTarget(requisition);
-  };
-
   const handleConfirmDelete = () => {
     if (!deleteTarget) {
       return;
@@ -207,66 +205,6 @@ const PersonnelRequisitionPage = () => {
 
     handleDeleteRequisition(deleteTarget.id);
   };
-
-  const filteredAndSortedRequisitions = useMemo(() => {
-    const normalizedTerm = debouncedSearchTerm.toLowerCase().trim();
-
-    const filtered = requisitions.filter((requisition) => {
-      if (!normalizedTerm) {
-        return true;
-      }
-
-      const matchesId = String(requisition.id).includes(normalizedTerm);
-      const matchesArea = requisition.area?.name
-        .toLowerCase()
-        .includes(normalizedTerm);
-      const matchesWorkplace = requisition.workplace?.name
-        .toLowerCase()
-        .includes(normalizedTerm);
-      const matchesPosition = requisition.positionRequired?.name
-        .toLowerCase()
-        .includes(normalizedTerm);
-
-      return matchesId || matchesArea || matchesWorkplace || matchesPosition;
-    });
-
-    if (!sortField || !sortDirection) {
-      return filtered;
-    }
-
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortField === "id") {
-        return a.id - b.id;
-      }
-
-      if (sortField === "requestDate") {
-        const dateA = new Date(a.requestDate).getTime();
-        const dateB = new Date(b.requestDate).getTime();
-        return dateA - dateB;
-      }
-
-      if (sortField === "numberOfVacancies") {
-        return a.numberOfVacancies - b.numberOfVacancies;
-      }
-
-      if (sortField === "isExternal") {
-        return a.isExternal === b.isExternal ? 0 : a.isExternal ? 1 : -1;
-      }
-
-      return 0;
-    });
-
-    return sortDirection === "asc" ? sorted : sorted.reverse();
-  }, [requisitions, debouncedSearchTerm, sortField, sortDirection]);
-
-  const paginatedRequisitions = useMemo(() => {
-    if (rowsPerPage === -1) {
-      return filteredAndSortedRequisitions;
-    }
-
-    const start = page * rowsPerPage;
-    return filteredAndSortedRequisitions.slice(start, start + rowsPerPage);
-  }, [filteredAndSortedRequisitions, page, rowsPerPage]);
 
   const sortLabel = (field: SortField) => {
     if (sortField !== field || !sortDirection) {
@@ -353,10 +291,10 @@ const PersonnelRequisitionPage = () => {
               letterSpacing: -0.25,
             }}
           >
-            Solicitudes de Personal
+            Solicitudes de personal
           </Typography>
           <Chip
-            label={`${requisitions.length} solicitudes`}
+            label={`${totalRequisitions} solicitudes`}
             size="small"
             sx={{
               bgcolor: alpha(APP_COLORS.primary, 0.14),
@@ -365,342 +303,162 @@ const PersonnelRequisitionPage = () => {
             }}
           />
         </Stack>
-        <Typography variant="body1" sx={{ color: "text.secondary" }}>
-          Gestiona las solicitudes de personal: crear, editar, eliminar, filtrar
-          y listar.
-        </Typography>
       </Box>
 
-      {/* Loading State */}
-      {isLoading ? (
-        <Stack
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          sx={{ py: 8 }}
+      {/* Search and Actions Bar */}
+      <Stack
+        direction={{ xs: "column", lg: "row" }}
+        spacing={1.5}
+        alignItems={{ xs: "stretch", lg: "center" }}
+        justifyContent="space-between"
+      >
+        <Card
+          sx={{
+            borderRadius: "16px",
+            border: `1px solid ${alpha(APP_COLORS.primary, 0.2)}`,
+            backgroundColor: "background.paper",
+            boxShadow: `0 6px 16px ${alpha(APP_COLORS.secondary, 0.08)}`,
+            flex: 1,
+            maxWidth: { lg: 760 },
+          }}
         >
-          <CircularProgress />
-          <Typography>Cargando solicitudes de personal...</Typography>
-        </Stack>
-      ) : (
-        <>
-          {/* Search and Actions Bar */}
-          <Stack
-            direction={{ xs: "column", lg: "row" }}
-            spacing={1.5}
-            alignItems={{ xs: "stretch", lg: "center" }}
-            justifyContent="space-between"
-          >
-            <Card
-              sx={{
-                borderRadius: "16px",
-                border: `1px solid ${alpha(APP_COLORS.primary, 0.2)}`,
-                backgroundColor: "background.paper",
-                boxShadow: `0 6px 16px ${alpha(APP_COLORS.secondary, 0.08)}`,
-                flex: 1,
-                maxWidth: { lg: 760 },
-              }}
-            >
-              <CardContent sx={{ p: 1.25, "&:last-child": { pb: 1.25 } }}>
-                <TextField
-                  placeholder="Buscar por ID, área, centro de trabajo o puesto"
-                  size="small"
-                  value={searchTerm}
-                  onChange={(event) => {
-                    setSearchTerm(event.target.value);
-                    setPage(0);
-                  }}
-                  fullWidth
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      height: 44,
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              justifyContent="flex-end"
-              sx={{ minWidth: { lg: "fit-content" } }}
-            >
-              <Button
-                variant="contained"
-                startIcon={<AddRoundedIcon />}
-                onClick={openCreateForm}
-                sx={{
-                  bgcolor: APP_COLORS.primary,
-                  color: APP_COLORS.surface,
-                  borderRadius: "12px",
-                  px: 2,
-                  "&:hover": {
-                    bgcolor: alpha(APP_COLORS.primary, 0.9),
-                  },
-                }}
-              >
-                Crear Solicitud
-              </Button>
-
-              <Button
-                variant="outlined"
-                startIcon={<RefreshRoundedIcon />}
-                onClick={loadRequisitions}
-                sx={{
-                  borderRadius: "12px",
-                  borderColor: alpha(APP_COLORS.primary, 0.35),
-                  color: "text.primary",
-                }}
-              >
-                Refrescar
-              </Button>
-            </Stack>
-          </Stack>
-
-          <Card
-            sx={{
-              borderRadius: "16px",
-              border: `1px solid ${alpha(APP_COLORS.primary, 0.2)}`,
-              backgroundColor: "background.paper",
-              boxShadow: `0 6px 16px ${alpha(APP_COLORS.secondary, 0.08)}`,
-              overflow: "hidden",
-            }}
-          >
-            <Table
+          <CardContent sx={{ p: 1.25, "&:last-child": { pb: 1.25 } }}>
+            <TextField
+              placeholder="Buscar por ID, área, solicitante, cargo solicitante, centro de trabajo, cargo requerido, motivo o tipo de convocatoria"
               size="small"
-              sx={{
-                "& .MuiTableCell-root": {
-                  borderBottom: `1px solid ${
-                    isDarkMode
-                      ? alpha(APP_COLORS.surface, 0.1)
-                      : alpha(APP_COLORS.secondary, 0.12)
-                  }`,
-                },
-              }}
-            >
-              <TableHead>
-                <TableRow
-                  sx={{
-                    backgroundColor: APP_COLORS.primary,
-                    "& .MuiTableCell-root": {
-                      color: APP_COLORS.surface,
-                      borderBottom: "none",
-                      py: 1.7,
-                    },
-                  }}
-                >
-                  {[
-                    { key: "id", label: "ID" },
-                    { key: "requestDate", label: "Fecha" },
-                    { key: "numberOfVacancies", label: "Vacantes" },
-                    { key: "isExternal", label: "Tipo" },
-                  ].map((column) => (
-                    <TableCell key={column.key} sx={{ fontWeight: 700 }}>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: APP_COLORS.surface,
-                          }}
-                        >
-                          {column.label}
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() =>
-                            handleSortToggle(column.key as SortField)
-                          }
-                          sx={{
-                            width: 24,
-                            height: 24,
-                            color: alpha(APP_COLORS.surface, 0.9),
-                          }}
-                        >
-                          <SwapVertRoundedIcon sx={{ fontSize: 17 }} />
-                        </IconButton>
-                        {sortLabel(column.key as SortField) !== "null" && (
-                          <Chip
-                            label={sortLabel(column.key as SortField)}
-                            size="small"
-                            sx={{
-                              height: 18,
-                              fontSize: 10,
-                              bgcolor: alpha(APP_COLORS.surface, 0.18),
-                              color: APP_COLORS.surface,
-                              border: `1px solid ${alpha(APP_COLORS.surface, 0.26)}`,
-                            }}
-                          />
-                        )}
-                      </Stack>
-                    </TableCell>
-                  ))}
-                  <TableCell sx={{ fontWeight: 700 }}>Área</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {paginatedRequisitions.map((requisition, index) => (
-                  <TableRow
-                    key={requisition.id}
-                    hover
-                    sx={{
-                      backgroundColor:
-                        index % 2 === 0
-                          ? isDarkMode
-                            ? darkRowEven
-                            : alpha(APP_COLORS.surface, 0.98)
-                          : isDarkMode
-                            ? darkRowOdd
-                            : "#F3F4F3",
-                      "& .MuiTableCell-root": {
-                        color: isDarkMode
-                          ? alpha(APP_COLORS.surface, 0.94)
-                          : "text.primary",
-                      },
-                      "&:hover": {
-                        backgroundColor: isDarkMode
-                          ? alpha(APP_COLORS.surface, 0.12)
-                          : undefined,
-                      },
-                    }}
-                  >
-                    <TableCell>
-                      <Typography component="span" sx={{ fontSize: 14 }}>
-                        {renderHighlightedText(requisition.id)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography component="span" sx={{ fontSize: 14 }}>
-                        {renderHighlightedText(
-                          new Date(requisition.requestDate).toLocaleDateString(
-                            "es-ES",
-                          ),
-                        )}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography component="span" sx={{ fontSize: 14 }}>
-                        {renderHighlightedText(requisition.numberOfVacancies)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={requisition.isExternal ? "Externa" : "Interna"}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          bgcolor: requisition.isExternal
-                            ? alpha(APP_COLORS.primary, 0.1)
-                            : alpha(APP_COLORS.secondary, 0.1),
-                          borderColor: requisition.isExternal
-                            ? alpha(APP_COLORS.primary, 0.5)
-                            : alpha(APP_COLORS.secondary, 0.5),
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography component="span" sx={{ fontSize: 13 }}>
-                        {renderHighlightedText(requisition.area?.name ?? "—")}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5}>
-                        <IconButton
-                          size="small"
-                          onClick={() => openEditForm(requisition)}
-                          sx={{ color: "primary.main" }}
-                        >
-                          <EditRoundedIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => requestDeleteRequisition(requisition)}
-                          sx={{ color: "error.main" }}
-                        >
-                          <DeleteOutlineRoundedIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-                {paginatedRequisitions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7}>
-                      <Box
-                        sx={{
-                          py: 3,
-                          textAlign: "center",
-                          color: "text.secondary",
-                        }}
-                      >
-                        {filteredAndSortedRequisitions.length === 0 &&
-                        debouncedSearchTerm
-                          ? "No hay solicitudes que coincidan con la búsqueda."
-                          : "No hay solicitudes de personal para mostrar."}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-
-            <TablePagination
-              component="div"
-              count={filteredAndSortedRequisitions.length}
-              page={page}
-              onPageChange={(_, nextPage) => setPage(nextPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(event) => {
-                setRowsPerPage(Number(event.target.value));
+              value={searchTerm}
+              autoComplete="off"
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
                 setPage(0);
               }}
-              rowsPerPageOptions={[5, 10, 20, { label: "Todos", value: -1 }]}
-              labelRowsPerPage="Filas por página"
-              showFirstButton
-              showLastButton
+              fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  height: 44,
+                },
+              }}
             />
-          </Card>
+          </CardContent>
+        </Card>
 
-          <Dialog
-            open={Boolean(deleteTarget)}
-            onClose={() => setDeleteTarget(null)}
-            fullWidth
-            maxWidth="xs"
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          justifyContent="flex-end"
+          sx={{ minWidth: { lg: "fit-content" } }}
+        >
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={openCreateForm}
+            sx={{
+              bgcolor: APP_COLORS.primary,
+              color: APP_COLORS.surface,
+              borderRadius: "12px",
+              px: 2,
+              "&:hover": {
+                bgcolor: alpha(APP_COLORS.primary, 0.9),
+              },
+            }}
           >
-            <DialogTitle sx={{ fontWeight: 800 }}>
-              Confirmar eliminación
-            </DialogTitle>
-            <DialogContent>
-              <DialogContentText>
-                {deleteTarget
-                  ? `Se eliminará la solicitud de personal ID: ${deleteTarget.id} del área "${deleteTarget.area?.name}".`
-                  : "Se eliminará la solicitud de personal seleccionada."}
-              </DialogContentText>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button
-                onClick={() => setDeleteTarget(null)}
-                sx={{ color: "text.secondary" }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleConfirmDelete}
-                sx={{ borderRadius: "10px" }}
-              >
-                Eliminar
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </>
-      )}
+            Crear
+          </Button>
+
+          <Button
+            variant="outlined"
+            startIcon={
+              isRefreshing ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <RefreshRoundedIcon />
+              )
+            }
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            sx={{
+              borderRadius: "12px",
+              borderColor: alpha(APP_COLORS.primary, 0.35),
+              color: "text.primary",
+            }}
+          >
+            {isRefreshing ? "Refrescando..." : "Refrescar"}
+          </Button>
+        </Stack>
+      </Stack>
+
+      <Card
+        sx={{
+          borderRadius: "16px",
+          border: `1px solid ${alpha(APP_COLORS.primary, 0.2)}`,
+          backgroundColor: "background.paper",
+          boxShadow: `0 6px 16px ${alpha(APP_COLORS.secondary, 0.08)}`,
+          overflow: "hidden",
+        }}
+      >
+        {isLoading && totalRequisitions === 0 ? (
+          <Stack
+            spacing={2}
+            alignItems="center"
+            justifyContent="center"
+            sx={{ py: 8 }}
+          >
+            <CircularProgress />
+            <Typography>Cargando solicitudes de personal...</Typography>
+          </Stack>
+        ) : (
+          <PersonnelRequisitionTable
+            requisitions={requisitions}
+            totalCount={totalRequisitions}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            isDarkMode={isDarkMode}
+            onSortToggle={handleSortToggle}
+            sortLabel={sortLabel}
+            onPageChange={setPage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setRowsPerPage(nextRowsPerPage);
+              setPage(0);
+            }}
+            renderHighlightedText={renderHighlightedText}
+            hasSearchTerm={Boolean(debouncedSearchTerm)}
+          />
+        )}
+      </Card>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Confirmar eliminación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteTarget
+              ? `Se eliminará la solicitud de personal ID: ${deleteTarget.id} del área "${deleteTarget.area?.name}".`
+              : "Se eliminará la solicitud de personal seleccionada."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            sx={{ color: "text.secondary" }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            sx={{ borderRadius: "10px" }}
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };

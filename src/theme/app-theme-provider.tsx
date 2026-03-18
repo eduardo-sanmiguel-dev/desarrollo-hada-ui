@@ -3,6 +3,7 @@
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { NotificationProvider } from "@/hooks/use-notification";
 import { appTheme } from "./theme";
 
 type AppThemeProviderProps = {
@@ -18,7 +19,7 @@ export const AppThemeProvider = ({ children }: AppThemeProviderProps) => {
       disableTransitionOnChange
     >
       <CssBaseline enableColorScheme />
-      {children}
+      <NotificationProvider>{children}</NotificationProvider>
     </ThemeProvider>
   );
 };
