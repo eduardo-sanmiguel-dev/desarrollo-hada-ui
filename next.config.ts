@@ -28,6 +28,10 @@ const nextConfig: NextConfig = {
         source: "/personnel-requisitions/:path*",
         destination: `${backendUrl}/personnel-requisitions/:path*`,
       },
+      {
+        source: "/position-configurations/:path*",
+        destination: `${backendUrl}/position-configurations/:path*`,
+      },
     ];
   },
 };

@@ -32,8 +32,9 @@ import {
   CreatePersonnelRequisitionDto,
   UpdatePersonnelRequisitionDto,
 } from "@/types/personnel-requisition.types";
+import { getHttpErrorMessage } from "@/utils/http-error";
 import { personnelRequisitionsService } from "@/services";
-import { usePermissions } from "@/hooks";
+import { useNotification, usePermissions } from "@/hooks";
 import { AUTHORIZE_REQUEST, CREATE_REQUEST } from "@/constants";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -44,6 +45,7 @@ const PersonnelRequisitionPage = () => {
   const { mode, systemMode } = useColorScheme();
   const effectiveMode = mode === "system" ? systemMode : mode;
   const isDarkMode = effectiveMode === "dark";
+  const { error: notifyError } = useNotification();
   const { currentPermissions } = usePermissions();
   const pathname = usePathname();
   const router = useRouter();
@@ -78,7 +80,6 @@ const PersonnelRequisitionPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,7 +93,6 @@ const PersonnelRequisitionPage = () => {
   const loadRequisitions = useCallback(async () => {
     try {
       setIsLoading(true);
-      setError(null);
       const response = await personnelRequisitionsService.getAll({
         page: page + 1,
         limit: rowsPerPage,
@@ -103,16 +103,21 @@ const PersonnelRequisitionPage = () => {
       setRequisitions(response.data.items);
       setTotalRequisitions(response.data.total);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Error al cargar solicitudes de personal";
-      setError(errorMessage);
+      notifyError(
+        getHttpErrorMessage(err, "Error al cargar solicitudes de personal."),
+      );
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  }, [page, rowsPerPage, debouncedSearchTerm, sortField, sortDirection]);
+  }, [
+    page,
+    rowsPerPage,
+    debouncedSearchTerm,
+    sortField,
+    sortDirection,
+    notifyError,
+  ]);
 
   useEffect(() => {
     loadRequisitions();
@@ -176,39 +181,42 @@ const PersonnelRequisitionPage = () => {
 
   const handleOpenEditForm = async (id: number) => {
     try {
-      setError(null);
       const response = await personnelRequisitionsService.getById(id);
       setFormMode("edit");
       setEditingRequisitionId(id);
       setEditingRequisitionData(response.data);
       setIsFormOpen(true);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "No fue posible cargar la solicitud para edición";
-      setError(errorMessage);
+      notifyError(
+        getHttpErrorMessage(
+          err,
+          "No fue posible cargar la solicitud para edición.",
+        ),
+      );
       console.error(err);
     }
   };
 
-  const handleOpenViewForm = useCallback(async (id: number) => {
-    try {
-      setError(null);
-      const response = await personnelRequisitionsService.getById(id);
-      setFormMode("view");
-      setEditingRequisitionId(id);
-      setEditingRequisitionData(response.data);
-      setIsFormOpen(true);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "No fue posible cargar el detalle de la solicitud";
-      setError(errorMessage);
-      console.error(err);
-    }
-  }, []);
+  const handleOpenViewForm = useCallback(
+    async (id: number) => {
+      try {
+        const response = await personnelRequisitionsService.getById(id);
+        setFormMode("view");
+        setEditingRequisitionId(id);
+        setEditingRequisitionData(response.data);
+        setIsFormOpen(true);
+      } catch (err) {
+        notifyError(
+          getHttpErrorMessage(
+            err,
+            "No fue posible cargar el detalle de la solicitud.",
+          ),
+        );
+        console.error(err);
+      }
+    },
+    [notifyError],
+  );
 
   useEffect(() => {
     const viewIdRaw = searchParams.get("viewId");
@@ -233,8 +241,6 @@ const PersonnelRequisitionPage = () => {
     payload: CreatePersonnelRequisitionDto | UpdatePersonnelRequisitionDto,
   ) => {
     try {
-      setError(null);
-
       if (editingRequisitionId !== null) {
         // Update existing
         await personnelRequisitionsService.update(
@@ -258,9 +264,7 @@ const PersonnelRequisitionPage = () => {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al guardar la solicitud";
-      setError(errorMessage);
+      notifyError(getHttpErrorMessage(err, "Error al guardar la solicitud."));
       console.error(err);
     }
   };
@@ -275,9 +279,7 @@ const PersonnelRequisitionPage = () => {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al eliminar la solicitud";
-      setError(errorMessage);
+      notifyError(getHttpErrorMessage(err, "Error al eliminar la solicitud."));
       console.error(err);
     }
   };
@@ -301,7 +303,6 @@ const PersonnelRequisitionPage = () => {
 
     try {
       setIsAuthorizing(true);
-      setError(null);
 
       await personnelRequisitionsService.createAuthorizationRequest({
         requisitionId: target.id,
@@ -323,9 +324,7 @@ const PersonnelRequisitionPage = () => {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al autorizar la solicitud";
-      setError(errorMessage);
+      notifyError(getHttpErrorMessage(err, "Error al autorizar la solicitud."));
       console.error(err);
     } finally {
       setIsAuthorizing(false);
@@ -408,7 +407,6 @@ const PersonnelRequisitionPage = () => {
   return (
     <Stack spacing={2.5}>
       {/* Alerts */}
-      {error && <Alert severity="error">{error}</Alert>}
       {successMessage && <Alert severity="success">{successMessage}</Alert>}
 
       {/* Header */}

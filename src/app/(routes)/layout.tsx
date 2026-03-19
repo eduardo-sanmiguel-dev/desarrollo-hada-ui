@@ -6,8 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { ThemeModeSwitcher } from "@/components/theme-mode-switcher";
 import { authService } from "@/services";
+import { useNotification } from "@/hooks";
 import { useAuthStore } from "@/stores/auth.store";
 import { APP_COLORS } from "@/theme/tokens";
+import { getHttpErrorMessage } from "@/utils/http-error";
 import {
   AppBar,
   Avatar,
@@ -44,6 +46,7 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import axios from "axios";
 import { usePermissions } from "@/hooks";
 
 const drawerWidthExpanded = 292;
@@ -135,6 +138,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [isConfigMenuOpen, setIsConfigMenuOpen] = useState(false);
   const { isSessionReady, user, userId, setSession, clearSession } =
     useAuthStore();
+  const { error: notifyError } = useNotification();
   const { enabledRoutes } = usePermissions();
 
   const userName = user?.name ?? "";
@@ -160,7 +164,15 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           userId: response.data.userId,
           user: response.data.user,
         });
-      } catch {
+      } catch (err) {
+        const status = axios.isAxiosError(err) ? err.response?.status : null;
+
+        if (status !== 401) {
+          notifyError(
+            getHttpErrorMessage(err, "No fue posible validar tu sesion."),
+          );
+        }
+
         clearSession();
         router.replace("/");
       }
@@ -169,11 +181,13 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
     if (!isSessionReady) {
       void loadSession();
     }
-  }, [clearSession, isSessionReady, router, setSession]);
+  }, [clearSession, isSessionReady, notifyError, router, setSession]);
 
   const handleLogout = async () => {
     try {
       await authService.logout();
+    } catch (err) {
+      notifyError(getHttpErrorMessage(err, "No fue posible cerrar sesion."));
     } finally {
       clearSession();
       router.replace("/");

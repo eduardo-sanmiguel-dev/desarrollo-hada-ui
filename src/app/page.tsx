@@ -9,8 +9,10 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import * as CryptoJS from "crypto-js";
 import { authService } from "@/services";
+import { useNotification } from "@/hooks";
 import { useAuthStore } from "@/stores/auth.store";
 import { APP_COLORS } from "@/theme/tokens";
+import { getHttpErrorMessage } from "@/utils/http-error";
 import { alpha } from "@mui/material/styles";
 import {
   Box,
@@ -34,6 +36,7 @@ type LoginForm = {
 
 const LoginPage = () => {
   const router = useRouter();
+  const { error: notifyError } = useNotification();
   const { setSession } = useAuthStore();
   const isDev = process.env.NODE_ENV === "development";
   const cryptoKey =
@@ -82,7 +85,9 @@ const LoginPage = () => {
       });
 
       if (response.status < 200 || response.status >= 300) {
-        setErrorMessage("Credenciales invalidas o sesion no autorizada.");
+        const message = "Credenciales invalidas o sesion no autorizada.";
+        setErrorMessage(message);
+        notifyError(message);
         return;
       }
 
@@ -94,8 +99,13 @@ const LoginPage = () => {
 
       router.push("/dashboard");
       router.refresh();
-    } catch {
-      setErrorMessage("No fue posible iniciar sesion. Intenta de nuevo.");
+    } catch (err) {
+      const message = getHttpErrorMessage(
+        err,
+        "No fue posible iniciar sesion. Intenta de nuevo.",
+      );
+      setErrorMessage(message);
+      notifyError(message);
     } finally {
       setIsSubmitting(false);
     }
