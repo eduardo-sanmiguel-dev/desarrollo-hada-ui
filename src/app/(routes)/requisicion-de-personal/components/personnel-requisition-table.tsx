@@ -73,7 +73,7 @@ export const PersonnelRequisitionTable = ({
   onDelete,
   onAuthorize,
 }: PersonnelRequisitionTableProps) => {
-  const permissions = usePermissions();
+  const { currentPermissions } = usePermissions();
 
   return (
     <>
@@ -173,15 +173,20 @@ export const PersonnelRequisitionTable = ({
               key={requisition.id}
               hover
               sx={{
+                backgroundColor: requisition.isAuthorized
+                  ? alpha(APP_COLORS.primary, isDarkMode ? 0.24 : 0.12)
+                  : undefined,
                 "& .MuiTableCell-root": {
                   color: isDarkMode
                     ? alpha(APP_COLORS.surface, 0.94)
                     : "text.primary",
                 },
                 "&:hover": {
-                  backgroundColor: isDarkMode
-                    ? alpha(APP_COLORS.surface, 0.12)
-                    : undefined,
+                  backgroundColor: requisition.isAuthorized
+                    ? alpha(APP_COLORS.primary, isDarkMode ? 0.3 : 0.18)
+                    : isDarkMode
+                      ? alpha(APP_COLORS.surface, 0.12)
+                      : undefined,
                 },
               }}
             >
@@ -275,28 +280,32 @@ export const PersonnelRequisitionTable = ({
               </TableCell>
               <TableCell>
                 <Stack direction="row" spacing={0.5}>
-                  {permissions.includes(AUTHORIZE_REQUEST) && (
-                    <Tooltip title="Autorizar" arrow>
-                      <IconButton
-                        size="small"
-                        onClick={() => onAuthorize(requisition)}
-                        sx={{
-                          color: "success.main",
-                          borderRadius: "8px",
-                          border: `1px solid ${alpha(APP_COLORS.secondary, 0.3)}`,
-                          backgroundColor: alpha(APP_COLORS.secondary, 0.04),
-                          width: 30,
-                          height: 30,
-                          "&:hover": {
-                            backgroundColor: alpha(APP_COLORS.secondary, 0.12),
-                          },
-                        }}
-                        aria-label={`Autorizar solicitud ${requisition.id}`}
-                      >
-                        <VerifiedRoundedIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                  {currentPermissions.includes(AUTHORIZE_REQUEST) &&
+                    !requisition.isAuthorized && (
+                      <Tooltip title="Autorizar" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => onAuthorize(requisition)}
+                          sx={{
+                            color: "success.main",
+                            borderRadius: "8px",
+                            border: `1px solid ${alpha(APP_COLORS.secondary, 0.3)}`,
+                            backgroundColor: alpha(APP_COLORS.secondary, 0.04),
+                            width: 30,
+                            height: 30,
+                            "&:hover": {
+                              backgroundColor: alpha(
+                                APP_COLORS.secondary,
+                                0.12,
+                              ),
+                            },
+                          }}
+                          aria-label={`Autorizar solicitud ${requisition.id}`}
+                        >
+                          <VerifiedRoundedIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   <Tooltip title="Ver" arrow>
                     <IconButton
                       size="small"

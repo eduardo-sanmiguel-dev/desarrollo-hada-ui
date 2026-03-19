@@ -509,17 +509,6 @@ export const PersonnelRequisitionForm = ({
 
       {/* Action Buttons */}
       <Stack direction="row" spacing={1.5} justifyContent="flex-end">
-        {isReadOnly && canAuthorize ? (
-          <Button
-            variant="contained"
-            color="success"
-            disabled={isAuthorizing}
-            onClick={onAuthorize}
-            sx={{ borderRadius: "10px" }}
-          >
-            {isAuthorizing ? "Autorizando..." : "Autorizar"}
-          </Button>
-        ) : null}
         <Button
           variant="outlined"
           onClick={onCancel}
@@ -532,6 +521,17 @@ export const PersonnelRequisitionForm = ({
         >
           {isReadOnly ? "Cerrar" : "Cancelar"}
         </Button>
+        {isReadOnly && canAuthorize ? (
+          <Button
+            variant="contained"
+            color="success"
+            disabled={isAuthorizing}
+            onClick={onAuthorize}
+            sx={{ borderRadius: "10px" }}
+          >
+            {isAuthorizing ? "Autorizando..." : "Autorizar"}
+          </Button>
+        ) : null}
         {!isReadOnly ? (
           <Button
             variant="contained"

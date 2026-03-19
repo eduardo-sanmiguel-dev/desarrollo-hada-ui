@@ -37,6 +37,7 @@ import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuOpenRoundedIcon from "@mui/icons-material/MenuOpenRounded";
+import { usePermissions } from "@/hooks";
 
 const drawerWidthExpanded = 292;
 const drawerWidthCollapsed = 88;
@@ -93,6 +94,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
   const { isSessionReady, user, userId, setSession, clearSession } =
     useAuthStore();
+  const { enabledRoutes } = usePermissions();
 
   const userName = user?.name ?? "";
 
@@ -224,97 +226,99 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
       </Box>
 
       <List sx={{ mt: 2, gap: 0.5, display: "grid" }}>
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+        {menuItems
+          .filter((item) => enabledRoutes.includes(item.href) || !item.enabled)
+          .map((item) => {
+            const isActive = pathname === item.href;
 
-          return (
-            <ListItemButton
-              key={item.label}
-              component={item.enabled ? Link : "button"}
-              href={item.enabled ? item.href : undefined}
-              disabled={!item.enabled}
-              onClick={() => {
-                if (!isDesktop) {
-                  setMobileDrawerOpen(false);
-                }
-              }}
-              sx={{
-                borderRadius: 2,
-                color: menuText,
-                border: "1px solid transparent",
-                justifyContent: isMenuExpanded ? "flex-start" : "center",
-                backgroundColor: isActive
-                  ? isDarkMode
-                    ? alpha(APP_COLORS.primary, 0.16)
-                    : alpha(APP_COLORS.surface, 0.22)
-                  : "transparent",
-                borderColor: isActive
-                  ? isDarkMode
-                    ? alpha(APP_COLORS.primary, 0.36)
-                    : alpha(APP_COLORS.surface, 0.42)
-                  : "transparent",
-                "&:hover": {
-                  backgroundColor: isDarkMode
-                    ? alpha(APP_COLORS.primary, 0.1)
-                    : alpha(APP_COLORS.surface, 0.14),
-                },
-                "&:focus-visible": {
-                  outline: `2px solid ${
-                    isDarkMode
-                      ? alpha(APP_COLORS.primary, 0.82)
-                      : alpha(APP_COLORS.surface, 0.86)
-                  }`,
-                  outlineOffset: 2,
-                },
-                "&.Mui-disabled": {
-                  opacity: 1,
-                  color: menuMutedText,
-                },
-              }}
-            >
-              <ListItemIcon
+            return (
+              <ListItemButton
+                key={item.label}
+                component={item.enabled ? Link : "button"}
+                href={item.enabled ? item.href : undefined}
+                disabled={!item.enabled}
+                onClick={() => {
+                  if (!isDesktop) {
+                    setMobileDrawerOpen(false);
+                  }
+                }}
                 sx={{
-                  color: "inherit",
-                  minWidth: isMenuExpanded ? 34 : 0,
-                  mr: isMenuExpanded ? 0 : 0,
+                  borderRadius: 2,
+                  color: menuText,
+                  border: "1px solid transparent",
+                  justifyContent: isMenuExpanded ? "flex-start" : "center",
+                  backgroundColor: isActive
+                    ? isDarkMode
+                      ? alpha(APP_COLORS.primary, 0.16)
+                      : alpha(APP_COLORS.surface, 0.22)
+                    : "transparent",
+                  borderColor: isActive
+                    ? isDarkMode
+                      ? alpha(APP_COLORS.primary, 0.36)
+                      : alpha(APP_COLORS.surface, 0.42)
+                    : "transparent",
+                  "&:hover": {
+                    backgroundColor: isDarkMode
+                      ? alpha(APP_COLORS.primary, 0.1)
+                      : alpha(APP_COLORS.surface, 0.14),
+                  },
+                  "&:focus-visible": {
+                    outline: `2px solid ${
+                      isDarkMode
+                        ? alpha(APP_COLORS.primary, 0.82)
+                        : alpha(APP_COLORS.surface, 0.86)
+                    }`,
+                    outlineOffset: 2,
+                  },
+                  "&.Mui-disabled": {
+                    opacity: 1,
+                    color: menuMutedText,
+                  },
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
-              {isMenuExpanded ? (
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    sx: {
-                      color: "inherit",
-                      fontWeight: isActive ? 700 : 500,
-                    },
-                  }}
-                />
-              ) : null}
-              {!item.enabled && isMenuExpanded ? (
-                <Chip
-                  size="small"
-                  label="Prox"
+                <ListItemIcon
                   sx={{
-                    height: 22,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    backgroundColor: isDarkMode
-                      ? alpha(APP_COLORS.primary, 0.18)
-                      : alpha(APP_COLORS.surface, 0.2),
-                    color: menuText,
-                    border: `1px solid ${
-                      isDarkMode
-                        ? alpha(APP_COLORS.primary, 0.34)
-                        : alpha(APP_COLORS.surface, 0.3)
-                    }`,
+                    color: "inherit",
+                    minWidth: isMenuExpanded ? 34 : 0,
+                    mr: isMenuExpanded ? 0 : 0,
                   }}
-                />
-              ) : null}
-            </ListItemButton>
-          );
-        })}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {isMenuExpanded ? (
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      sx: {
+                        color: "inherit",
+                        fontWeight: isActive ? 700 : 500,
+                      },
+                    }}
+                  />
+                ) : null}
+                {!item.enabled && isMenuExpanded ? (
+                  <Chip
+                    size="small"
+                    label="Prox"
+                    sx={{
+                      height: 22,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      backgroundColor: isDarkMode
+                        ? alpha(APP_COLORS.primary, 0.18)
+                        : alpha(APP_COLORS.surface, 0.2),
+                      color: menuText,
+                      border: `1px solid ${
+                        isDarkMode
+                          ? alpha(APP_COLORS.primary, 0.34)
+                          : alpha(APP_COLORS.surface, 0.3)
+                      }`,
+                    }}
+                  />
+                ) : null}
+              </ListItemButton>
+            );
+          })}
       </List>
 
       <Box sx={{ mt: "auto", pt: 2, position: "relative", zIndex: 1 }}>

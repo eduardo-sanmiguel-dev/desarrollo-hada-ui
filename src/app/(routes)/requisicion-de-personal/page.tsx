@@ -44,7 +44,7 @@ const PersonnelRequisitionPage = () => {
   const { mode, systemMode } = useColorScheme();
   const effectiveMode = mode === "system" ? systemMode : mode;
   const isDarkMode = effectiveMode === "dark";
-  const permissions = usePermissions();
+  const { currentPermissions } = usePermissions();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -192,7 +192,7 @@ const PersonnelRequisitionPage = () => {
     }
   };
 
-  const handleOpenViewForm = async (id: number) => {
+  const handleOpenViewForm = useCallback(async (id: number) => {
     try {
       setError(null);
       const response = await personnelRequisitionsService.getById(id);
@@ -208,7 +208,7 @@ const PersonnelRequisitionPage = () => {
       setError(errorMessage);
       console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const viewIdRaw = searchParams.get("viewId");
@@ -392,7 +392,7 @@ const PersonnelRequisitionPage = () => {
         isAuthorizing={isAuthorizing}
         canAuthorize={
           formMode === "view" &&
-          permissions.includes(AUTHORIZE_REQUEST) &&
+          currentPermissions.includes(AUTHORIZE_REQUEST) &&
           !editingRequisitionData?.isAuthorized
         }
         initialData={editingRequisitionData ?? undefined}
@@ -479,7 +479,7 @@ const PersonnelRequisitionPage = () => {
           justifyContent="flex-end"
           sx={{ minWidth: { lg: "fit-content" } }}
         >
-          {permissions.includes(CREATE_REQUEST) && (
+          {currentPermissions.includes(CREATE_REQUEST) && (
             <Button
               variant="contained"
               startIcon={<AddRoundedIcon />}
