@@ -25,6 +25,7 @@ import {
   ListItemText,
   Stack,
   Toolbar,
+  Tooltip,
   Typography,
   useMediaQuery,
 } from "@mui/material";
@@ -305,126 +306,152 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
             return (
               <Box key={item.label}>
-                <ListItemButton
-                  component={item.enabled && !hasChildren ? Link : "button"}
-                  href={item.enabled && !hasChildren ? item.href : undefined}
-                  disabled={!item.enabled}
-                  onClick={() => {
-                    if (hasChildren && isMenuExpanded) {
-                      setIsConfigMenuOpen((prev) => !prev);
-                      return;
-                    }
-
-                    if (!isDesktop) {
-                      setMobileDrawerOpen(false);
-                    }
-                  }}
-                  sx={{
-                    borderRadius: 2,
-                    width: "100%",
-                    color: menuText,
-                    border: "1px solid transparent",
-                    justifyContent: isMenuExpanded ? "flex-start" : "center",
-                    backgroundColor: isActive
-                      ? isDarkMode
-                        ? alpha(APP_COLORS.primary, 0.16)
-                        : alpha(APP_COLORS.surface, 0.22)
-                      : "transparent",
-                    borderColor: isActive
-                      ? isDarkMode
-                        ? alpha(APP_COLORS.primary, 0.36)
-                        : alpha(APP_COLORS.surface, 0.42)
-                      : "transparent",
-                    "&:hover": {
-                      backgroundColor: isDarkMode
-                        ? alpha(APP_COLORS.primary, 0.1)
-                        : alpha(APP_COLORS.surface, 0.14),
-                    },
-                    "&:focus-visible": {
-                      outline: `2px solid ${
-                        isDarkMode
-                          ? alpha(APP_COLORS.primary, 0.82)
-                          : alpha(APP_COLORS.surface, 0.86)
-                      }`,
-                      outlineOffset: 2,
-                    },
-                    "&.Mui-disabled": {
-                      opacity: 1,
-                      color: menuMutedText,
-                    },
-                  }}
+                <Tooltip
+                  key={`${item.label}-${isMenuExpanded ? "expanded" : "compact"}`}
+                  title={item.label}
+                  placement="right"
+                  arrow
+                  disableInteractive
+                  disableHoverListener={isMenuExpanded}
+                  disableFocusListener={isMenuExpanded}
+                  disableTouchListener={isMenuExpanded}
                 >
-                  <ListItemIcon
-                    sx={{
-                      color: "inherit",
-                      minWidth: isMenuExpanded ? 34 : 0,
-                      mr: isMenuExpanded ? 0 : 0,
-                    }}
+                  <Box
+                    component="span"
+                    sx={{ display: "block", width: "100%" }}
                   >
-                    {item.icon}
-                  </ListItemIcon>
-                  {isMenuExpanded ? (
-                    <ListItemText
-                      primary={item.label}
-                      sx={{ mr: 1 }}
-                      primaryTypographyProps={{
-                        sx: {
-                          color: "inherit",
-                          fontWeight: isActive ? 700 : 500,
-                          lineHeight: 1.2,
+                    <ListItemButton
+                      component={item.enabled && !hasChildren ? Link : "button"}
+                      href={
+                        item.enabled && !hasChildren ? item.href : undefined
+                      }
+                      disabled={!item.enabled}
+                      onClick={() => {
+                        if (hasChildren) {
+                          if (!isMenuExpanded) {
+                            setIsMenuExpanded(true);
+                            setIsConfigMenuOpen(true);
+                            return;
+                          }
+
+                          setIsConfigMenuOpen((prev) => !prev);
+                          return;
+                        }
+
+                        if (!isDesktop) {
+                          setMobileDrawerOpen(false);
+                        }
+                      }}
+                      sx={{
+                        borderRadius: 2,
+                        width: "100%",
+                        color: menuText,
+                        border: "1px solid transparent",
+                        justifyContent: isMenuExpanded
+                          ? "flex-start"
+                          : "center",
+                        backgroundColor: isActive
+                          ? isDarkMode
+                            ? alpha(APP_COLORS.primary, 0.16)
+                            : alpha(APP_COLORS.surface, 0.22)
+                          : "transparent",
+                        borderColor: isActive
+                          ? isDarkMode
+                            ? alpha(APP_COLORS.primary, 0.36)
+                            : alpha(APP_COLORS.surface, 0.42)
+                          : "transparent",
+                        "&:hover": {
+                          backgroundColor: isDarkMode
+                            ? alpha(APP_COLORS.primary, 0.1)
+                            : alpha(APP_COLORS.surface, 0.14),
+                        },
+                        "&:focus-visible": {
+                          outline: `2px solid ${
+                            isDarkMode
+                              ? alpha(APP_COLORS.primary, 0.82)
+                              : alpha(APP_COLORS.surface, 0.86)
+                          }`,
+                          outlineOffset: 2,
+                        },
+                        "&.Mui-disabled": {
+                          opacity: 1,
+                          color: menuMutedText,
                         },
                       }}
-                    />
-                  ) : null}
-                  {isMenuExpanded ? (
-                    <Box
-                      sx={{
-                        ml: "auto",
-                        minWidth: 46,
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        alignItems: "center",
-                        flexShrink: 0,
-                      }}
                     >
-                      {hasChildren ? (
-                        <Box
-                          sx={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            color: alpha(menuText, 0.9),
-                          }}
-                        >
-                          {isConfigMenuOpen ? (
-                            <ExpandLessRoundedIcon fontSize="small" />
-                          ) : (
-                            <ExpandMoreRoundedIcon fontSize="small" />
-                          )}
-                        </Box>
-                      ) : null}
-                      {!item.enabled ? (
-                        <Chip
-                          size="small"
-                          label="Prox"
-                          sx={{
-                            height: 22,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            backgroundColor: isDarkMode
-                              ? alpha(APP_COLORS.primary, 0.18)
-                              : alpha(APP_COLORS.surface, 0.2),
-                            color: menuText,
-                            border: `1px solid ${
-                              isDarkMode
-                                ? alpha(APP_COLORS.primary, 0.34)
-                                : alpha(APP_COLORS.surface, 0.3)
-                            }`,
+                      <ListItemIcon
+                        sx={{
+                          color: "inherit",
+                          minWidth: isMenuExpanded ? 34 : 0,
+                          mr: isMenuExpanded ? 0 : 0,
+                        }}
+                      >
+                        {item.icon}
+                      </ListItemIcon>
+                      {isMenuExpanded ? (
+                        <ListItemText
+                          primary={item.label}
+                          sx={{ mr: 1 }}
+                          primaryTypographyProps={{
+                            sx: {
+                              color: "inherit",
+                              fontWeight: isActive ? 700 : 500,
+                              lineHeight: 1.2,
+                            },
                           }}
                         />
                       ) : null}
-                    </Box>
-                  ) : null}
-                </ListItemButton>
+                      {isMenuExpanded ? (
+                        <Box
+                          sx={{
+                            ml: "auto",
+                            minWidth: 46,
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {hasChildren ? (
+                            <Box
+                              sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                color: alpha(menuText, 0.9),
+                              }}
+                            >
+                              {isConfigMenuOpen ? (
+                                <ExpandLessRoundedIcon fontSize="small" />
+                              ) : (
+                                <ExpandMoreRoundedIcon fontSize="small" />
+                              )}
+                            </Box>
+                          ) : null}
+                          {!item.enabled ? (
+                            <Chip
+                              size="small"
+                              label="Prox"
+                              sx={{
+                                height: 22,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                backgroundColor: isDarkMode
+                                  ? alpha(APP_COLORS.primary, 0.18)
+                                  : alpha(APP_COLORS.surface, 0.2),
+                                color: menuText,
+                                border: `1px solid ${
+                                  isDarkMode
+                                    ? alpha(APP_COLORS.primary, 0.34)
+                                    : alpha(APP_COLORS.surface, 0.3)
+                                }`,
+                              }}
+                            />
+                          ) : null}
+                        </Box>
+                      ) : null}
+                    </ListItemButton>
+                  </Box>
+                </Tooltip>
 
                 {hasChildren && isMenuExpanded ? (
                   <Collapse in={isConfigMenuOpen} timeout="auto" unmountOnExit>
