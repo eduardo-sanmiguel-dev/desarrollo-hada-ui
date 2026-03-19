@@ -11,6 +11,10 @@ export interface Workplace {
   code?: string;
 }
 
+export interface PositionRequiredConfig {
+  responseTimeInDays: number;
+}
+
 export interface EmployeePosition {
   id: number;
   name: string;
@@ -48,7 +52,7 @@ export interface PersonnelRequisition {
   requestDate: string | Date;
   area?: Area;
   workplace?: Workplace;
-  positionRequired?: EmployeePosition;
+  positionRequired?: EmployeePosition & { config?: PositionRequiredConfig };
   numberOfVacancies: number;
   isExternal: boolean;
   reasonForRequest?: ReasonForRequest;
@@ -121,7 +125,7 @@ export interface PersonnelRequisitionResponse {
   requestDate: string;
   area: Area;
   workplace: Workplace;
-  positionRequired: EmployeePosition;
+  positionRequired: EmployeePosition & { config?: PositionRequiredConfig };
   numberOfVacancies: number;
   isExternal: boolean;
   reasonForRequest: ReasonForRequest;

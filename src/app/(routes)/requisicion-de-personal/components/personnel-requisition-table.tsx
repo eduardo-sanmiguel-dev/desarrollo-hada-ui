@@ -75,6 +75,35 @@ export const PersonnelRequisitionTable = ({
 }: PersonnelRequisitionTableProps) => {
   const { currentPermissions } = usePermissions();
 
+  const getRemainingTimeLabel = (requisition: PersonnelRequisition) => {
+    if (!requisition.isAuthorized) {
+      return "—";
+    }
+
+    const responseTimeInDays =
+      requisition.positionRequired?.config?.responseTimeInDays;
+
+    if (!requisition.requestDate || responseTimeInDays == null) {
+      return "—";
+    }
+
+    const createdAt = new Date(requisition.requestDate);
+    if (Number.isNaN(createdAt.getTime())) {
+      return "—";
+    }
+
+    const totalAllowedDays = responseTimeInDays * requisition.numberOfVacancies;
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const deadline =
+      createdAt.getTime() + totalAllowedDays * millisecondsPerDay;
+    const remainingDays = Math.max(
+      0,
+      Math.ceil((deadline - new Date().getTime()) / millisecondsPerDay),
+    );
+
+    return `${remainingDays} día${remainingDays === 1 ? "" : "s"}`;
+  };
+
   return (
     <>
       <Table
@@ -152,6 +181,18 @@ export const PersonnelRequisitionTable = ({
                 </Stack>
               </TableCell>
             ))}
+            <TableCell sx={{ fontWeight: 700 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: APP_COLORS.surface,
+                }}
+              >
+                Tiempo restante
+              </Typography>
+            </TableCell>
             <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>
               <Typography
                 component="span"
@@ -279,6 +320,11 @@ export const PersonnelRequisitionTable = ({
                 </Typography>
               </TableCell>
               <TableCell>
+                <Typography component="span" sx={{ fontSize: 14 }}>
+                  {getRemainingTimeLabel(requisition)}
+                </Typography>
+              </TableCell>
+              <TableCell>
                 <Stack direction="row" spacing={0.5}>
                   {currentPermissions.includes(AUTHORIZE_REQUEST) &&
                     !requisition.isAuthorized && (
@@ -373,7 +419,7 @@ export const PersonnelRequisitionTable = ({
 
           {requisitions.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={12}>
+              <TableCell colSpan={13}>
                 <Box
                   sx={{
                     py: 3,
