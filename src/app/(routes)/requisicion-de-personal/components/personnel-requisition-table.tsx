@@ -193,6 +193,18 @@ export const PersonnelRequisitionTable = ({
                 Tiempo restante
               </Typography>
             </TableCell>
+            <TableCell sx={{ fontWeight: 700 }}>
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: APP_COLORS.surface,
+                }}
+              >
+                % de cumplimiento
+              </Typography>
+            </TableCell>
             <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>
               <Typography
                 component="span"
@@ -325,6 +337,22 @@ export const PersonnelRequisitionTable = ({
                 </Typography>
               </TableCell>
               <TableCell>
+                <Typography component="span" sx={{ fontSize: 14 }}>
+                  {requisition.numberOfVacancies > 0
+                    ? `${Math.min(
+                        100,
+                        Math.round(
+                          ((Array.isArray(requisition.usersRemplaced)
+                            ? requisition.usersRemplaced.length
+                            : 0) /
+                            requisition.numberOfVacancies) *
+                            100,
+                        ),
+                      )}%`
+                    : "—"}
+                </Typography>
+              </TableCell>
+              <TableCell>
                 <Stack direction="row" spacing={0.5}>
                   {currentPermissions.includes(AUTHORIZE_REQUEST) &&
                     !requisition.isAuthorized && (
@@ -419,7 +447,7 @@ export const PersonnelRequisitionTable = ({
 
           {requisitions.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={13}>
+              <TableCell colSpan={14}>
                 <Box
                   sx={{
                     py: 3,
