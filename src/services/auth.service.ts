@@ -1,4 +1,5 @@
 import { createScopedClient } from "./http-client";
+import type { UserPermissions } from "@/stores/auth.store";
 
 const authHttp = createScopedClient("/auth");
 
@@ -9,7 +10,7 @@ export type CheckTokenResponse = {
     id: number;
     name: string;
     email: string;
-    permissions: Record<string, string[]>;
+    permissions: UserPermissions;
   };
 };
 

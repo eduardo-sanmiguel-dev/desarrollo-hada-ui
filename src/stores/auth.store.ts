@@ -1,10 +1,16 @@
 import { create } from "zustand";
 
+export type PermissionTree =
+  | string[]
+  | Array<Record<string, string[] | Record<string, string[]>[]>>;
+
+export type UserPermissions = Record<string, PermissionTree>;
+
 export type SessionUser = {
   id: number;
   name: string;
   email: string;
-  permissions: Record<string, string[]>;
+  permissions: UserPermissions;
 };
 
 type AuthStoreState = {

@@ -14,6 +14,7 @@ import {
   Box,
   Chip,
   CircularProgress,
+  Collapse,
   CssBaseline,
   Divider,
   Drawer,
@@ -37,12 +38,30 @@ import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuOpenRoundedIcon from "@mui/icons-material/MenuOpenRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import { usePermissions } from "@/hooks";
 
 const drawerWidthExpanded = 292;
 const drawerWidthCollapsed = 88;
 
-const menuItems = [
+type MenuItem = {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  enabled: boolean;
+  children?: Array<{
+    label: string;
+    href: string;
+    enabled: boolean;
+    icon: React.ReactNode;
+  }>;
+};
+
+const menuItems: ReadonlyArray<MenuItem> = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -54,6 +73,26 @@ const menuItems = [
     href: "/requisicion-de-personal",
     icon: <PersonAddAlt1RoundedIcon fontSize="small" />,
     enabled: true,
+  },
+  {
+    label: "Configuraciones",
+    href: "/configuraciones",
+    icon: <SettingsRoundedIcon fontSize="small" />,
+    enabled: true,
+    children: [
+      {
+        label: "Usuarios",
+        href: "/configuraciones/usuarios",
+        enabled: true,
+        icon: <ManageAccountsRoundedIcon sx={{ fontSize: 18 }} />,
+      },
+      {
+        label: "Tiempos de respuesta",
+        href: "/configuraciones/tiempos-de-respuesta",
+        enabled: true,
+        icon: <AccessTimeRoundedIcon sx={{ fontSize: 18 }} />,
+      },
+    ],
   },
   {
     label: "Talento y Cultura",
@@ -80,7 +119,7 @@ const menuItems = [
     icon: <InsightsRoundedIcon fontSize="small" />,
     enabled: false,
   },
-] as const;
+];
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
@@ -92,6 +131,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const isDarkMode = effectiveMode === "dark";
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
+  const [isConfigMenuOpen, setIsConfigMenuOpen] = useState(false);
   const { isSessionReady, user, userId, setSession, clearSession } =
     useAuthStore();
   const { enabledRoutes } = usePermissions();
@@ -155,6 +195,16 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const activeDrawerWidth = isDesktop
     ? desktopDrawerWidth
     : drawerWidthExpanded;
+
+  const hasAccessToRoute = (route: string) =>
+    enabledRoutes.some(
+      (enabledRoute) =>
+        enabledRoute === route || enabledRoute.startsWith(`${route}/`),
+    );
+
+  useEffect(() => {
+    setIsConfigMenuOpen(pathname.startsWith("/configuraciones"));
+  }, [pathname]);
 
   const menu = (
     <Box
@@ -227,96 +277,230 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
       <List sx={{ mt: 2, gap: 0.5, display: "grid" }}>
         {menuItems
-          .filter((item) => enabledRoutes.includes(item.href) || !item.enabled)
+          .filter((item) => {
+            if (!item.enabled) {
+              return true;
+            }
+
+            if (item.children?.length) {
+              return (
+                hasAccessToRoute(item.href) ||
+                item.children.some((child) =>
+                  child.enabled ? hasAccessToRoute(child.href) : true,
+                )
+              );
+            }
+
+            return hasAccessToRoute(item.href);
+          })
           .map((item) => {
-            const isActive = pathname === item.href;
+            const hasChildren = Boolean(item.children?.length);
+            const isChildRouteActive =
+              hasChildren && pathname.startsWith(`${item.href}/`);
+            const isActive = pathname === item.href || isChildRouteActive;
+            const visibleChildren =
+              item.children?.filter((child) =>
+                child.enabled ? hasAccessToRoute(child.href) : true,
+              ) ?? [];
 
             return (
-              <ListItemButton
-                key={item.label}
-                component={item.enabled ? Link : "button"}
-                href={item.enabled ? item.href : undefined}
-                disabled={!item.enabled}
-                onClick={() => {
-                  if (!isDesktop) {
-                    setMobileDrawerOpen(false);
-                  }
-                }}
-                sx={{
-                  borderRadius: 2,
-                  color: menuText,
-                  border: "1px solid transparent",
-                  justifyContent: isMenuExpanded ? "flex-start" : "center",
-                  backgroundColor: isActive
-                    ? isDarkMode
-                      ? alpha(APP_COLORS.primary, 0.16)
-                      : alpha(APP_COLORS.surface, 0.22)
-                    : "transparent",
-                  borderColor: isActive
-                    ? isDarkMode
-                      ? alpha(APP_COLORS.primary, 0.36)
-                      : alpha(APP_COLORS.surface, 0.42)
-                    : "transparent",
-                  "&:hover": {
-                    backgroundColor: isDarkMode
-                      ? alpha(APP_COLORS.primary, 0.1)
-                      : alpha(APP_COLORS.surface, 0.14),
-                  },
-                  "&:focus-visible": {
-                    outline: `2px solid ${
-                      isDarkMode
-                        ? alpha(APP_COLORS.primary, 0.82)
-                        : alpha(APP_COLORS.surface, 0.86)
-                    }`,
-                    outlineOffset: 2,
-                  },
-                  "&.Mui-disabled": {
-                    opacity: 1,
-                    color: menuMutedText,
-                  },
-                }}
-              >
-                <ListItemIcon
+              <Box key={item.label}>
+                <ListItemButton
+                  component={item.enabled && !hasChildren ? Link : "button"}
+                  href={item.enabled && !hasChildren ? item.href : undefined}
+                  disabled={!item.enabled}
+                  onClick={() => {
+                    if (hasChildren && isMenuExpanded) {
+                      setIsConfigMenuOpen((prev) => !prev);
+                      return;
+                    }
+
+                    if (!isDesktop) {
+                      setMobileDrawerOpen(false);
+                    }
+                  }}
                   sx={{
-                    color: "inherit",
-                    minWidth: isMenuExpanded ? 34 : 0,
-                    mr: isMenuExpanded ? 0 : 0,
+                    borderRadius: 2,
+                    width: "100%",
+                    color: menuText,
+                    border: "1px solid transparent",
+                    justifyContent: isMenuExpanded ? "flex-start" : "center",
+                    backgroundColor: isActive
+                      ? isDarkMode
+                        ? alpha(APP_COLORS.primary, 0.16)
+                        : alpha(APP_COLORS.surface, 0.22)
+                      : "transparent",
+                    borderColor: isActive
+                      ? isDarkMode
+                        ? alpha(APP_COLORS.primary, 0.36)
+                        : alpha(APP_COLORS.surface, 0.42)
+                      : "transparent",
+                    "&:hover": {
+                      backgroundColor: isDarkMode
+                        ? alpha(APP_COLORS.primary, 0.1)
+                        : alpha(APP_COLORS.surface, 0.14),
+                    },
+                    "&:focus-visible": {
+                      outline: `2px solid ${
+                        isDarkMode
+                          ? alpha(APP_COLORS.primary, 0.82)
+                          : alpha(APP_COLORS.surface, 0.86)
+                      }`,
+                      outlineOffset: 2,
+                    },
+                    "&.Mui-disabled": {
+                      opacity: 1,
+                      color: menuMutedText,
+                    },
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                {isMenuExpanded ? (
-                  <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{
-                      sx: {
-                        color: "inherit",
-                        fontWeight: isActive ? 700 : 500,
-                      },
-                    }}
-                  />
-                ) : null}
-                {!item.enabled && isMenuExpanded ? (
-                  <Chip
-                    size="small"
-                    label="Prox"
+                  <ListItemIcon
                     sx={{
-                      height: 22,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      backgroundColor: isDarkMode
-                        ? alpha(APP_COLORS.primary, 0.18)
-                        : alpha(APP_COLORS.surface, 0.2),
-                      color: menuText,
-                      border: `1px solid ${
-                        isDarkMode
-                          ? alpha(APP_COLORS.primary, 0.34)
-                          : alpha(APP_COLORS.surface, 0.3)
-                      }`,
+                      color: "inherit",
+                      minWidth: isMenuExpanded ? 34 : 0,
+                      mr: isMenuExpanded ? 0 : 0,
                     }}
-                  />
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {isMenuExpanded ? (
+                    <ListItemText
+                      primary={item.label}
+                      sx={{ mr: 1 }}
+                      primaryTypographyProps={{
+                        sx: {
+                          color: "inherit",
+                          fontWeight: isActive ? 700 : 500,
+                          lineHeight: 1.2,
+                        },
+                      }}
+                    />
+                  ) : null}
+                  {isMenuExpanded ? (
+                    <Box
+                      sx={{
+                        ml: "auto",
+                        minWidth: 46,
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        alignItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {hasChildren ? (
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            color: alpha(menuText, 0.9),
+                          }}
+                        >
+                          {isConfigMenuOpen ? (
+                            <ExpandLessRoundedIcon fontSize="small" />
+                          ) : (
+                            <ExpandMoreRoundedIcon fontSize="small" />
+                          )}
+                        </Box>
+                      ) : null}
+                      {!item.enabled ? (
+                        <Chip
+                          size="small"
+                          label="Prox"
+                          sx={{
+                            height: 22,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            backgroundColor: isDarkMode
+                              ? alpha(APP_COLORS.primary, 0.18)
+                              : alpha(APP_COLORS.surface, 0.2),
+                            color: menuText,
+                            border: `1px solid ${
+                              isDarkMode
+                                ? alpha(APP_COLORS.primary, 0.34)
+                                : alpha(APP_COLORS.surface, 0.3)
+                            }`,
+                          }}
+                        />
+                      ) : null}
+                    </Box>
+                  ) : null}
+                </ListItemButton>
+
+                {hasChildren && isMenuExpanded ? (
+                  <Collapse in={isConfigMenuOpen} timeout="auto" unmountOnExit>
+                    <List
+                      disablePadding
+                      sx={{
+                        mt: 0.6,
+                        ml: 2.6,
+                        pl: 1,
+                        borderLeft: `1px solid ${alpha(APP_COLORS.surface, isDarkMode ? 0.22 : 0.28)}`,
+                      }}
+                    >
+                      {visibleChildren.map((child) => {
+                        const isChildActive = pathname === child.href;
+
+                        return (
+                          <ListItemButton
+                            key={child.label}
+                            component={child.enabled ? Link : "button"}
+                            href={child.enabled ? child.href : undefined}
+                            disabled={!child.enabled}
+                            onClick={() => {
+                              if (!isDesktop) {
+                                setMobileDrawerOpen(false);
+                              }
+                            }}
+                            sx={{
+                              mt: 0.35,
+                              borderRadius: 1.75,
+                              minHeight: 38,
+                              border: `1px solid ${
+                                isChildActive
+                                  ? isDarkMode
+                                    ? alpha(APP_COLORS.primary, 0.34)
+                                    : alpha(APP_COLORS.surface, 0.42)
+                                  : alpha(APP_COLORS.surface, 0.16)
+                              }`,
+                              color: menuText,
+                              backgroundColor: isChildActive
+                                ? isDarkMode
+                                  ? alpha(APP_COLORS.primary, 0.18)
+                                  : alpha(APP_COLORS.surface, 0.2)
+                                : alpha(APP_COLORS.surface, 0.06),
+                              "&:hover": {
+                                backgroundColor: isDarkMode
+                                  ? alpha(APP_COLORS.primary, 0.14)
+                                  : alpha(APP_COLORS.surface, 0.14),
+                              },
+                            }}
+                          >
+                            <ListItemIcon
+                              sx={{
+                                minWidth: 30,
+                                color: isChildActive
+                                  ? menuText
+                                  : alpha(menuText, 0.88),
+                              }}
+                            >
+                              {child.icon}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={child.label}
+                              primaryTypographyProps={{
+                                sx: {
+                                  fontSize: 13,
+                                  fontWeight: isChildActive ? 700 : 500,
+                                },
+                              }}
+                            />
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+                  </Collapse>
                 ) : null}
-              </ListItemButton>
+              </Box>
             );
           })}
       </List>
