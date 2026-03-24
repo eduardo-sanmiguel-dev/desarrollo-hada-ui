@@ -6,6 +6,7 @@ import {
   ReasonForRequest,
   Employee,
   Project,
+  EmployeeGender,
 } from "@/types/personnel-requisition.types";
 
 // Create scoped clients for different endpoints
@@ -24,6 +25,9 @@ export const personnelRequisitionRelatedService = {
   },
   getPositions() {
     return employeesHttp.get<EmployeePosition[]>("/positions");
+  },
+  getGenders() {
+    return employeesHttp.get<EmployeeGender[]>("/genders");
   },
   getReasonsForRequest() {
     return reasonsHttp.get<ReasonForRequest[]>("/");
