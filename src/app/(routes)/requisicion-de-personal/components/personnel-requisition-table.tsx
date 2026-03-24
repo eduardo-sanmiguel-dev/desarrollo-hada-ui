@@ -76,6 +76,10 @@ export const PersonnelRequisitionTable = ({
   const { currentPermissions } = usePermissions();
 
   const getRemainingTimeLabel = (requisition: PersonnelRequisition) => {
+    if (requisition.percentageOfCompliance === 100) {
+      return "Completado";
+    }
+
     if (!requisition.isAuthorized) {
       return "—";
     }
@@ -338,17 +342,8 @@ export const PersonnelRequisitionTable = ({
               </TableCell>
               <TableCell>
                 <Typography component="span" sx={{ fontSize: 14 }}>
-                  {requisition.numberOfVacancies > 0
-                    ? `${Math.min(
-                        100,
-                        Math.round(
-                          ((Array.isArray(requisition.usersRemplaced)
-                            ? requisition.usersRemplaced.length
-                            : 0) /
-                            requisition.numberOfVacancies) *
-                            100,
-                        ),
-                      )}%`
+                  {typeof requisition.percentageOfCompliance === "number"
+                    ? `${requisition.percentageOfCompliance}%`
                     : "—"}
                 </Typography>
               </TableCell>

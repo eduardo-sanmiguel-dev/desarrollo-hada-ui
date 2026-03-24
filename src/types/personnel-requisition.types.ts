@@ -66,6 +66,7 @@ export interface PersonnelRequisition {
   workplace?: Workplace;
   positionRequired?: EmployeePosition & { config?: PositionRequiredConfig };
   numberOfVacancies: number;
+  percentageOfCompliance?: number;
   isExternal: boolean;
   reasonForRequest?: ReasonForRequest;
   usersRemplaced?: number[] | User[];
@@ -107,6 +108,10 @@ export interface UpdatePersonnelRequisitionDto extends Partial<CreatePersonnelRe
 export interface GetPersonnelRequisitionsQuery {
   page?: number;
   limit?: number;
+  areaId?: number;
+  positionRequiredId?: number;
+  isAuthorized?: boolean;
+  excludeFullCompliance?: boolean;
   search?: string;
   sortField?:
     | "id"
@@ -139,6 +144,7 @@ export interface PersonnelRequisitionResponse {
   workplace: Workplace;
   positionRequired: EmployeePosition & { config?: PositionRequiredConfig };
   numberOfVacancies: number;
+  percentageOfCompliance: number;
   isExternal: boolean;
   reasonForRequest: ReasonForRequest;
   usersRemplaced: User[];

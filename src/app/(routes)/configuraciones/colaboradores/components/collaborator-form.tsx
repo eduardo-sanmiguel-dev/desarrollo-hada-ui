@@ -184,33 +184,15 @@ export const CollaboratorForm = ({
       try {
         setIsLoading(true);
 
-        const [areasRes, positionsRes, gendersRes, requisitionsRes] =
-          await Promise.all([
-            personnelRequisitionRelatedService.getAreas(),
-            personnelRequisitionRelatedService.getPositions(),
-            personnelRequisitionRelatedService.getGenders(),
-            personnelRequisitionsService.getAll({ limit: -1 }),
-          ]);
+        const [areasRes, positionsRes, gendersRes] = await Promise.all([
+          personnelRequisitionRelatedService.getAreas(),
+          personnelRequisitionRelatedService.getPositions(),
+          personnelRequisitionRelatedService.getGenders(),
+        ]);
 
         setAreas(areasRes.data);
         setPositions(positionsRes.data);
         setGenders(gendersRes.data);
-
-        const authorizedRequisitions = requisitionsRes.data.items.filter(
-          (item) => item.isAuthorized,
-        );
-
-        const hasInitialRequisition =
-          initialData?.personnelRequisition &&
-          authorizedRequisitions.some(
-            (item) => item.id === initialData.personnelRequisition?.id,
-          );
-
-        setRequisitions(
-          initialData?.personnelRequisition && !hasInitialRequisition
-            ? [initialData.personnelRequisition, ...authorizedRequisitions]
-            : authorizedRequisitions,
-        );
       } catch (error) {
         console.error("Error loading collaborator catalogs:", error);
         notifyError(
@@ -225,12 +207,76 @@ export const CollaboratorForm = ({
     };
 
     void loadCatalogs();
-  }, [initialData?.personnelRequisition, notifyError]);
+  }, [notifyError]);
+
+  useEffect(() => {
+    const loadRequisitions = async () => {
+      if (!area || !position) {
+        setRequisitions([]);
+        return;
+      }
+
+      try {
+        const requisitionsRes = await personnelRequisitionsService.getAll({
+          limit: -1,
+          areaId: area.id,
+          positionRequiredId: position.id,
+          isAuthorized: true,
+          excludeFullCompliance: true,
+        });
+
+        const items = requisitionsRes.data.items;
+        const hasInitialRequisition =
+          initialData?.personnelRequisition &&
+          items.some(
+            (item) => item.id === initialData.personnelRequisition?.id,
+          );
+
+        setRequisitions(
+          initialData?.personnelRequisition && !hasInitialRequisition
+            ? [initialData.personnelRequisition, ...items]
+            : items,
+        );
+      } catch (error) {
+        console.error("Error loading filtered requisitions:", error);
+        notifyError(
+          getHttpErrorMessage(
+            error,
+            "No fue posible cargar requisiciones de personal.",
+          ),
+        );
+      }
+    };
+
+    void loadRequisitions();
+  }, [area, position, initialData?.personnelRequisition, notifyError]);
 
   const maxDateAsString = useMemo(() => {
     const date = new Date();
     return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
   }, []);
+
+  const requisitionsByAreaAndPosition = useMemo(() => {
+    return requisitions;
+  }, [requisitions]);
+
+  const showPersonnelRequisitionField =
+    requisitionsByAreaAndPosition.length > 0;
+
+  useEffect(() => {
+    if (!personnelRequisition) {
+      return;
+    }
+
+    const stillValid = requisitionsByAreaAndPosition.some(
+      (item) => item.id === personnelRequisition.id,
+    );
+
+    if (!stillValid) {
+      setPersonnelRequisition(null);
+      clearFieldError("personnelRequisition");
+    }
+  }, [personnelRequisition, requisitionsByAreaAndPosition]);
 
   const handleSubmit = async () => {
     if (isReadOnly) {
@@ -511,9 +557,7 @@ export const CollaboratorForm = ({
                   )}
                 />
               </Box>
-            </Stack>
 
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                   Genero *
@@ -541,35 +585,42 @@ export const CollaboratorForm = ({
                   )}
                 />
               </Box>
-
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                  Requisicion de personal
-                </Typography>
-                <Autocomplete
-                  disabled={isReadOnly}
-                  options={requisitions}
-                  getOptionLabel={getRequisitionLabel}
-                  isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
-                  }
-                  value={personnelRequisition}
-                  onChange={(_, selected) => {
-                    setPersonnelRequisition(selected);
-                    clearFieldError("personnelRequisition");
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      placeholder="Selecciona una requisicion autorizada (opcional)"
-                      error={Boolean(validationErrors.personnelRequisition)}
-                      helperText={validationErrors.personnelRequisition}
-                    />
-                  )}
-                />
-              </Box>
             </Stack>
+
+            {showPersonnelRequisitionField && (
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 700, mb: 1 }}
+                  >
+                    Requisicion de personal
+                  </Typography>
+                  <Autocomplete
+                    disabled={isReadOnly}
+                    options={requisitionsByAreaAndPosition}
+                    getOptionLabel={getRequisitionLabel}
+                    isOptionEqualToValue={(option, value) =>
+                      option.id === value.id
+                    }
+                    value={personnelRequisition}
+                    onChange={(_, selected) => {
+                      setPersonnelRequisition(selected);
+                      clearFieldError("personnelRequisition");
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        placeholder="Selecciona una requisicion autorizada (opcional)"
+                        error={Boolean(validationErrors.personnelRequisition)}
+                        helperText={validationErrors.personnelRequisition}
+                      />
+                    )}
+                  />
+                </Box>
+              </Stack>
+            )}
           </Stack>
         </CardContent>
       </Card>
