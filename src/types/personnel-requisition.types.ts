@@ -27,6 +27,12 @@ export interface Employee {
   code: string;
   position?: EmployeePosition;
   gender?: EmployeeGender;
+  area?: EmployeeArea;
+}
+
+export interface EmployeeArea {
+  id: number;
+  name: string;
 }
 
 export interface EmployeeGender {
