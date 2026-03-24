@@ -85,8 +85,8 @@ const menuItems: ReadonlyArray<MenuItem> = [
     enabled: true,
     children: [
       {
-        label: "Usuarios",
-        href: "/configuraciones/usuarios",
+        label: "Colaboradores",
+        href: "/configuraciones/colaboradores",
         enabled: true,
         icon: <ManageAccountsRoundedIcon sx={{ fontSize: 18 }} />,
       },
