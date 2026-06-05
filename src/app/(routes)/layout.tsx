@@ -38,6 +38,7 @@ import Groups2RoundedIcon from "@mui/icons-material/Groups2Rounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
 import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
+import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuOpenRoundedIcon from "@mui/icons-material/MenuOpenRounded";
@@ -76,6 +77,12 @@ const menuItems: ReadonlyArray<MenuItem> = [
     label: "Requisicion de Personal",
     href: "/requisicion-de-personal",
     icon: <PersonAddAlt1RoundedIcon fontSize="small" />,
+    enabled: true,
+  },
+  {
+    label: "Reporte incumplimientos",
+    href: "/reporte-incumplimientos",
+    icon: <ReportProblemRoundedIcon fontSize="small" />,
     enabled: true,
   },
   {

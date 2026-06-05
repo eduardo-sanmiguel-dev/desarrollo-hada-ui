@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const backendUrl = process.env.API_BASE_URL || "http://localhost:4002";
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
   async rewrites() {
     return [
       { source: "/auth/:path*", destination: `${backendUrl}/auth/:path*` },
@@ -31,6 +30,10 @@ const nextConfig: NextConfig = {
       {
         source: "/position-configurations/:path*",
         destination: `${backendUrl}/position-configurations/:path*`,
+      },
+      {
+        source: "/nonconformance-reports/:path*",
+        destination: `${backendUrl}/nonconformance-reports/:path*`,
       },
     ];
   },
