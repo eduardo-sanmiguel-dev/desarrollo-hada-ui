@@ -28,6 +28,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TablePagination,
   TableRow,
@@ -62,43 +63,44 @@ const INITIAL_FORM_VALUES: FormValues = {
 };
 
 const DEVIATION_OPTIONS: readonly string[] = [
-  "Personal con barba",
-  "Uso de maquillaje",
-  "Consumo de alimentos",
-  "Ingreso de dulces",
-  "Unas largas",
-  "Uso de pulseras",
-  "Uso de anillos",
-  "Uniformes sucios",
-  "Manos sucias",
-  "Ingreso de cangureras",
-  "Uso inadecuado de uniforme",
-  "Uso incorrecto de cofia",
-  "Uso incorrecto de guantes",
-  "Bata sin abrochar",
-  "Estar enfermo y no reportarlo",
-  "Ingresar con heridas sin tratamiento",
-  "No lavarse las manos en la zona indicada",
+  "Acto inseguro",
+  "Incumplimiento BPM",
 ];
 
 const NONCONFORMANCE_OPTIONS: readonly string[] = [
-  "Juego o bromas",
-  "Intervencion de maquinas sin permiso",
-  "Intervencion de maquinas sin LOTO",
-  "Falta de permiso de trabajo",
   "Actividades por arriba de 1.5 mts",
-  "Falta de uso de EPP",
-  "Uso incorrecto de los materiales",
-  "Violencia/ bandalismo",
-  "Ingreso y uso de celular",
-  "Ingreso bajo el efecto de alcohol o alguna sustancia.",
-  "Dispocision incorrecta de EPP",
-  "Uso incorrecto de maquinas y/o equipos",
-  "Manipulacion incorrecta de materiales.",
-  "Puesto de trabajo sin orden y limpieza",
   "Areas comunes sin orden y limpieza",
+  "Bata sin abrochar",
   "Bloqueo de equipos de emergencia",
+  "Consumo de alimentos",
+  "Dispocision incorrecta de EPP",
+  "Estar enfermo y no reportarlo",
+  "Falta de permiso de trabajo",
+  "Falta de uso de EPP",
+  "Ingresar con heridas sin tratamiento",
+  "Ingreso bajo el efecto de alcohol o alguna sustancia.",
+  "Ingreso de cangureras",
+  "Ingreso de dulces",
+  "Ingreso y uso de celular",
+  "Intervencion de maquinas sin LOTO",
+  "Intervencion de maquinas sin permiso",
+  "Juego o bromas",
+  "Manipulacion incorrecta de materiales.",
+  "Manos sucias",
   "No lavar sus vasos, tazas, platos, cubiertos",
+  "No lavarse las manos en la zona indicada",
+  "Puesto de trabajo sin orden y limpieza",
+  "Unas largas",
+  "Uniformes sucios",
+  "Uso de anillos",
+  "Uso de maquillaje",
+  "Uso de pulseras",
+  "Uso inadecuado de uniforme",
+  "Uso incorrecto de cofia",
+  "Uso incorrecto de guantes",
+  "Uso incorrecto de los materiales",
+  "Uso incorrecto de maquinas y/o equipos",
+  "Violencia/ bandalismo",
 ];
 
 const formatDate = (value: string) => {
@@ -408,7 +410,7 @@ const ReporteIncumplimientosPage = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3, lg: 4 } }}>
       <Stack spacing={2.5}>
         <Card
           elevation={0}
@@ -440,7 +442,20 @@ const ReporteIncumplimientosPage = () => {
                 </Typography>
               </Box>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "grid",
+                  gap: 1.2,
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    md: "repeat(3, minmax(0, 1fr))",
+                    xl: "2fr repeat(6, minmax(0, 1fr))",
+                  },
+                  alignItems: "center",
+                }}
+              >
                 <TextField
                   size="small"
                   label="Buscar"
@@ -451,7 +466,15 @@ const ReporteIncumplimientosPage = () => {
                     setSearchTerm(event.target.value);
                     setPage(0);
                   }}
-                  sx={{ minWidth: { xs: "100%", sm: 280 } }}
+                  fullWidth
+                  sx={{
+                    gridColumn: {
+                      xs: "1 / -1",
+                      sm: "1 / -1",
+                      md: "1 / -1",
+                      xl: "1 / span 2",
+                    },
+                  }}
                 />
                 <TextField
                   size="small"
@@ -474,12 +497,14 @@ const ReporteIncumplimientosPage = () => {
                     setPage(0);
                   }}
                   InputLabelProps={{ shrink: true }}
+                  fullWidth
                 />
                 <Button
                   variant="outlined"
                   color="inherit"
                   onClick={handleRefresh}
                   disabled={isRefreshing || isLoading}
+                  sx={{ width: { xs: "100%", sm: "100%", md: "auto" } }}
                   startIcon={
                     isRefreshing ? (
                       <CircularProgress size={16} color="inherit" />
@@ -494,6 +519,7 @@ const ReporteIncumplimientosPage = () => {
                   variant="outlined"
                   color="inherit"
                   onClick={handleClearFilters}
+                  sx={{ width: { xs: "100%", sm: "100%", md: "auto" } }}
                   disabled={
                     isLoading &&
                     !searchTerm.trim() &&
@@ -509,6 +535,7 @@ const ReporteIncumplimientosPage = () => {
                   startIcon={<AddRoundedIcon />}
                   onClick={handleOpenCreateDialog}
                   sx={{
+                    width: { xs: "100%", sm: "100%", md: "auto" },
                     backgroundColor: APP_COLORS.primary,
                     "&:hover": {
                       backgroundColor: alpha(APP_COLORS.primary, 0.88),
@@ -520,6 +547,7 @@ const ReporteIncumplimientosPage = () => {
                 <Button
                   variant="outlined"
                   color="inherit"
+                  sx={{ width: { xs: "100%", sm: "100%", md: "auto" } }}
                   startIcon={
                     isDownloadingExcel ? (
                       <CircularProgress size={16} color="inherit" />
@@ -532,7 +560,7 @@ const ReporteIncumplimientosPage = () => {
                 >
                   Descargar
                 </Button>
-              </Stack>
+              </Box>
             </Stack>
           </CardContent>
         </Card>
@@ -562,63 +590,78 @@ const ReporteIncumplimientosPage = () => {
             </Box>
           ) : (
             <>
-              <Table size="small">
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      backgroundColor: APP_COLORS.primary,
-                      "& .MuiTableCell-root": {
-                        color: APP_COLORS.surface,
-                        fontWeight: 700,
-                        borderBottom: "none",
-                      },
-                    }}
-                  >
-                    <TableCell>ID</TableCell>
-                    <TableCell>Colaborador</TableCell>
-                    <TableCell>Desviacion</TableCell>
-                    <TableCell>No conformidad</TableCell>
-                    <TableCell>Reportado por</TableCell>
-                    <TableCell>Creado</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {rows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6}>
-                        <Box sx={{ py: 4, textAlign: "center" }}>
-                          <Typography variant="body2" color="text.secondary">
-                            {hasActiveFilters
-                              ? "No hay resultados para la busqueda actual."
-                              : "No hay incumplimientos registrados."}
-                          </Typography>
-                        </Box>
-                      </TableCell>
+              <TableContainer sx={{ overflowX: "auto" }}>
+                <Table size="small" sx={{ minWidth: 760 }}>
+                  <TableHead>
+                    <TableRow
+                      sx={{
+                        backgroundColor: APP_COLORS.primary,
+                        "& .MuiTableCell-root": {
+                          color: APP_COLORS.surface,
+                          fontWeight: 700,
+                          borderBottom: "none",
+                          whiteSpace: "nowrap",
+                        },
+                      }}
+                    >
+                      <TableCell>ID</TableCell>
+                      <TableCell>Colaborador</TableCell>
+                      <TableCell>Desviacion</TableCell>
+                      <TableCell>No conformidad</TableCell>
+                      <TableCell>Reportado por</TableCell>
+                      <TableCell>Creado</TableCell>
                     </TableRow>
-                  ) : (
-                    rows.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.id}</TableCell>
-                        <TableCell>{collaboratorLabel(row)}</TableCell>
-                        <TableCell sx={{ maxWidth: 260 }}>
-                          <Typography variant="body2">
-                            {row.deviation}
-                          </Typography>
+                  </TableHead>
+                  <TableBody>
+                    {rows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6}>
+                          <Box sx={{ py: 4, textAlign: "center" }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {hasActiveFilters
+                                ? "No hay resultados para la busqueda actual."
+                                : "No hay incumplimientos registrados."}
+                            </Typography>
+                          </Box>
                         </TableCell>
-                        <TableCell sx={{ maxWidth: 280 }}>
-                          <Typography variant="body2">
-                            {row.nonconformance}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {row.reportedByName ?? row.reportedBy}
-                        </TableCell>
-                        <TableCell>{formatDate(row.createdAt)}</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      rows.map((row) => (
+                        <TableRow key={row.id} hover>
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.id}
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 190 }}>
+                            {collaboratorLabel(row)}
+                          </TableCell>
+                          <TableCell sx={{ maxWidth: 260 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ wordBreak: "break-word" }}
+                            >
+                              {row.deviation}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ maxWidth: 280 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ wordBreak: "break-word" }}
+                            >
+                              {row.nonconformance}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 140 }}>
+                            {row.reportedByName ?? row.reportedBy}
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {formatDate(row.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
               <TablePagination
                 component="div"
