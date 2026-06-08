@@ -17,3 +17,19 @@ export interface CreateNonconformanceReportDto {
   nonconformance: string;
   signatureBase64: string;
 }
+
+export interface GetNonconformanceReportsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface PaginatedNonconformanceReportsResponse {
+  items: NonconformanceReport[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

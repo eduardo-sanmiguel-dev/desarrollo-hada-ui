@@ -36,6 +36,7 @@ import {
 } from "@mui/material";
 import { alpha, useColorScheme } from "@mui/material/styles";
 import SignaturePad from "signature_pad";
+import Swal from "sweetalert2";
 
 import { useNotification } from "@/hooks";
 import { collaboratorsService } from "@/services/collaborators.service";
@@ -116,22 +117,6 @@ const formatDate = (value: string) => {
   });
 };
 
-const buildSearchIndex = (row: NonconformanceReport) => {
-  return [
-    String(row.id),
-    String(row.employeeId),
-    String(row.employeeCode ?? ""),
-    row.employeeName ?? "",
-    row.deviation,
-    row.nonconformance,
-    String(row.reportedBy),
-    row.reportedByName ?? "",
-    formatDate(row.createdAt),
-  ]
-    .join(" ")
-    .toLowerCase();
-};
-
 const collaboratorLabel = (row: NonconformanceReport) => {
   if (row.employeeName && row.employeeCode) {
     return `${row.employeeCode} - ${row.employeeName}`;
@@ -151,8 +136,11 @@ const ReporteIncumplimientosPage = () => {
   const { error: notifyError, success: notifySuccess } = useNotification();
 
   const [rows, setRows] = useState<NonconformanceReport[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
@@ -230,8 +218,15 @@ const ReporteIncumplimientosPage = () => {
   const loadReports = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await nonconformanceReportsService.getAll();
-      setRows(response.data);
+      const response = await nonconformanceReportsService.getAll({
+        page: page + 1,
+        limit: rowsPerPage,
+        search: debouncedSearchTerm.trim() || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      setRows(response.data.items);
+      setTotalRows(response.data.total);
     } catch (err) {
       notifyError(
         getHttpErrorMessage(err, "No fue posible cargar los incumplimientos."),
@@ -240,7 +235,7 @@ const ReporteIncumplimientosPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [notifyError]);
+  }, [notifyError, page, rowsPerPage, debouncedSearchTerm, startDate, endDate]);
 
   useEffect(() => {
     void loadReports();
@@ -268,35 +263,8 @@ const ReporteIncumplimientosPage = () => {
     void loadEmployees();
   }, [loadEmployees]);
 
-  const filteredRows = useMemo(() => {
-    const query = debouncedSearchTerm.trim().toLowerCase();
-
-    if (!query) {
-      return rows;
-    }
-
-    return rows.filter((row) => buildSearchIndex(row).includes(query));
-  }, [rows, debouncedSearchTerm]);
-
-  const paginatedRows = useMemo(() => {
-    if (rowsPerPage === -1) {
-      return filteredRows;
-    }
-
-    const start = page * rowsPerPage;
-    return filteredRows.slice(start, start + rowsPerPage);
-  }, [filteredRows, page, rowsPerPage]);
-
-  useEffect(() => {
-    const maxPage =
-      rowsPerPage === -1
-        ? 0
-        : Math.max(0, Math.ceil(filteredRows.length / rowsPerPage) - 1);
-
-    if (page > maxPage) {
-      setPage(maxPage);
-    }
-  }, [filteredRows.length, page, rowsPerPage]);
+  const hasActiveFilters =
+    debouncedSearchTerm.trim() !== "" || startDate !== "" || endDate !== "";
 
   const handleRefresh = async () => {
     try {
@@ -308,8 +276,16 @@ const ReporteIncumplimientosPage = () => {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setDebouncedSearchTerm("");
+    setStartDate("");
+    setEndDate("");
+    setPage(0);
+  };
+
   const handleDownloadExcel = async () => {
-    if (paginatedRows.length === 0) {
+    if (rows.length === 0) {
       notifyError("No hay registros visibles para exportar a Excel.");
       return;
     }
@@ -317,7 +293,7 @@ const ReporteIncumplimientosPage = () => {
     try {
       setIsDownloadingExcel(true);
       const response = await nonconformanceReportsService.exportExcel(
-        paginatedRows.map((row) => row.id),
+        rows.map((row) => row.id),
       );
 
       const blob = new Blob([response.data], {
@@ -397,11 +373,28 @@ const ReporteIncumplimientosPage = () => {
     try {
       setIsSaving(true);
       await nonconformanceReportsService.create(payload);
-      notifySuccess("Incumplimiento creado exitosamente.");
       setIsDialogOpen(false);
       setFormValues(INITIAL_FORM_VALUES);
+      signaturePadRef.current?.clear();
       setPage(0);
       await loadReports();
+
+      try {
+        const countResponse =
+          await nonconformanceReportsService.getCountByEmployee(
+            payload.employeeId,
+          );
+
+        await Swal.fire({
+          icon: "success",
+          title: "Reporte creado",
+          text: `Este empleado lleva ${countResponse.data.totalReports} reportes acumulados.`,
+          confirmButtonText: "Aceptar",
+        });
+      } catch (countError) {
+        notifySuccess("Incumplimiento creado exitosamente.");
+        console.error(countError);
+      }
     } catch (err) {
       notifyError(
         getHttpErrorMessage(err, "No fue posible crear el incumplimiento."),
@@ -450,12 +443,35 @@ const ReporteIncumplimientosPage = () => {
                   size="small"
                   label="Buscar"
                   placeholder="Buscar en todos los campos"
+                  autoComplete="off"
                   value={searchTerm}
                   onChange={(event) => {
                     setSearchTerm(event.target.value);
                     setPage(0);
                   }}
                   sx={{ minWidth: { xs: "100%", sm: 280 } }}
+                />
+                <TextField
+                  size="small"
+                  label="Fecha inicio"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => {
+                    setStartDate(event.target.value);
+                    setPage(0);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  size="small"
+                  label="Fecha fin"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => {
+                    setEndDate(event.target.value);
+                    setPage(0);
+                  }}
+                  InputLabelProps={{ shrink: true }}
                 />
                 <Button
                   variant="outlined"
@@ -473,6 +489,20 @@ const ReporteIncumplimientosPage = () => {
                   Refrescar
                 </Button>
                 <Button
+                  variant="outlined"
+                  color="inherit"
+                  onClick={handleClearFilters}
+                  disabled={
+                    isLoading &&
+                    !searchTerm.trim() &&
+                    !debouncedSearchTerm.trim() &&
+                    !startDate &&
+                    !endDate
+                  }
+                >
+                  Limpiar
+                </Button>
+                <Button
                   variant="contained"
                   startIcon={<AddRoundedIcon />}
                   onClick={handleOpenCreateDialog}
@@ -483,7 +513,7 @@ const ReporteIncumplimientosPage = () => {
                     },
                   }}
                 >
-                  Crear reporte
+                  Crear
                 </Button>
                 <Button
                   variant="outlined"
@@ -498,7 +528,7 @@ const ReporteIncumplimientosPage = () => {
                   onClick={handleDownloadExcel}
                   disabled={isLoading || isDownloadingExcel}
                 >
-                  Descargar Excel
+                  Descargar
                 </Button>
               </Stack>
             </Stack>
@@ -551,13 +581,12 @@ const ReporteIncumplimientosPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedRows.length === 0 ? (
+                  {rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6}>
                         <Box sx={{ py: 4, textAlign: "center" }}>
                           <Typography variant="body2" color="text.secondary">
-                            {filteredRows.length === 0 &&
-                            debouncedSearchTerm.trim() !== ""
+                            {hasActiveFilters
                               ? "No hay resultados para la busqueda actual."
                               : "No hay incumplimientos registrados."}
                           </Typography>
@@ -565,7 +594,7 @@ const ReporteIncumplimientosPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedRows.map((row) => (
+                    rows.map((row) => (
                       <TableRow key={row.id} hover>
                         <TableCell>{row.id}</TableCell>
                         <TableCell>{collaboratorLabel(row)}</TableCell>
@@ -591,7 +620,7 @@ const ReporteIncumplimientosPage = () => {
 
               <TablePagination
                 component="div"
-                count={filteredRows.length}
+                count={totalRows}
                 page={page}
                 onPageChange={(_event, nextPage) => setPage(nextPage)}
                 rowsPerPage={rowsPerPage}
