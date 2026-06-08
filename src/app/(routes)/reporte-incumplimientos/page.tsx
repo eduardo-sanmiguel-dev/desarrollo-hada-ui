@@ -225,8 +225,10 @@ const ReporteIncumplimientosPage = () => {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       });
-      setRows(response.data.items);
-      setTotalRows(response.data.total);
+      setRows(Array.isArray(response.data?.items) ? response.data.items : []);
+      setTotalRows(
+        typeof response.data?.total === "number" ? response.data.total : 0,
+      );
     } catch (err) {
       notifyError(
         getHttpErrorMessage(err, "No fue posible cargar los incumplimientos."),
