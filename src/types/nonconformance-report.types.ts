@@ -6,6 +6,7 @@ export interface NonconformanceReport {
   deviation: string;
   nonconformance: string;
   signatureBase64?: string | null;
+  imageUrl?: string | null;
   reportedBy: number;
   reportedByName?: string | null;
   createdAt: string;

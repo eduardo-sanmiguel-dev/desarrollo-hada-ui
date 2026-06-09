@@ -14,8 +14,19 @@ export const nonconformanceReportsService = {
       params: query,
     });
   },
-  create(payload: CreateNonconformanceReportDto) {
-    return httpClient.post<NonconformanceReport>("/", payload);
+  create(payload: CreateNonconformanceReportDto, file: File) {
+    const formData = new FormData();
+    formData.append("employeeId", String(payload.employeeId));
+    formData.append("deviation", payload.deviation);
+    formData.append("nonconformance", payload.nonconformance);
+    formData.append("signatureBase64", payload.signatureBase64);
+    formData.append("file", file);
+
+    return httpClient.post<NonconformanceReport>("/", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
   getCountByEmployee(employeeId: number) {
     return httpClient.get<{ employeeId: number; totalReports: number }>(

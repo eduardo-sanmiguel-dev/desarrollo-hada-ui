@@ -134,6 +134,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/((?!_next|favicon.ico|auth|areas|workplaces|employees|projects|reasons-for-request|personnel-requisitions|position-configurations|nonconformance-reports|.*\\..*).*)",
+    "/((?!_next|favicon.ico|auth|areas|workplaces|employees|projects|reasons-for-request|personnel-requisitions|position-configurations|nonconformance-reports|nonconformance-evidences|.*\\..*).*)",
   ],
 };

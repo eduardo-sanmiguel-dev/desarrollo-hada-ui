@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
         source: "/nonconformance-reports/:path*",
         destination: `${backendUrl}/nonconformance-reports/:path*`,
       },
+      {
+        source: "/nonconformance-evidences/:path*",
+        destination: `${backendUrl}/nonconformance-evidences/:path*`,
+      },
     ];
   },
 };

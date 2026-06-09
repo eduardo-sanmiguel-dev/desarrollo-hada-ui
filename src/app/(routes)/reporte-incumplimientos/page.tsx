@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ChangeEvent,
   FormEvent,
   useCallback,
   useEffect,
@@ -8,8 +9,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {
   Alert,
@@ -34,10 +37,12 @@ import {
   TableRow,
   TextField,
   Typography,
+  IconButton,
 } from "@mui/material";
 import { alpha, useColorScheme } from "@mui/material/styles";
 import SignaturePad from "signature_pad";
 import Swal from "sweetalert2";
+import Webcam from "react-webcam";
 
 import { useNotification } from "@/hooks";
 import { collaboratorsService } from "@/services/collaborators.service";
@@ -67,41 +72,47 @@ const DEVIATION_OPTIONS: readonly string[] = [
   "Incumplimiento BPM",
 ];
 
-const NONCONFORMANCE_OPTIONS: readonly string[] = [
-  "Actividades por arriba de 1.5 mts",
-  "Areas comunes sin orden y limpieza",
-  "Bata sin abrochar",
-  "Bloqueo de equipos de emergencia",
-  "Consumo de alimentos",
-  "Dispocision incorrecta de EPP",
-  "Estar enfermo y no reportarlo",
-  "Falta de permiso de trabajo",
-  "Falta de uso de EPP",
-  "Ingresar con heridas sin tratamiento",
-  "Ingreso bajo el efecto de alcohol o alguna sustancia.",
-  "Ingreso de cangureras",
-  "Ingreso de dulces",
-  "Ingreso y uso de celular",
-  "Intervencion de maquinas sin LOTO",
-  "Intervencion de maquinas sin permiso",
-  "Juego o bromas",
-  "Manipulacion incorrecta de materiales.",
-  "Manos sucias",
-  "No lavar sus vasos, tazas, platos, cubiertos",
-  "No lavarse las manos en la zona indicada",
-  "Puesto de trabajo sin orden y limpieza",
-  "Unas largas",
-  "Uniformes sucios",
-  "Uso de anillos",
-  "Uso de maquillaje",
-  "Uso de pulseras",
-  "Uso inadecuado de uniforme",
-  "Uso incorrecto de cofia",
-  "Uso incorrecto de guantes",
-  "Uso incorrecto de los materiales",
-  "Uso incorrecto de maquinas y/o equipos",
-  "Violencia/ bandalismo",
-];
+const NONCONFORMANCE_OPTIONS_BY_DEVIATION: Record<string, readonly string[]> = {
+  "Incumplimiento BPM": [
+    "Personal con barba",
+    "Uso de maquillaje",
+    "Consumo de alimentos",
+    "Ingreso de dulces",
+    "Unas largas",
+    "Uso de pulseras",
+    "Uso de anillos",
+    "Uniformes sucios",
+    "Manos sucias",
+    "Ingreso de cangureras",
+    "Uso inadecuado de uniforme",
+    "Uso incorrecto de cofia",
+    "Uso incorrecto de guantes",
+    "Bata sin abrochar",
+    "Estar enfermo y no reportarlo",
+    "Ingresar con heridas sin tratamiento",
+    "No lavarse las manos en la zona indicada",
+    "Mal uso de casilleros",
+  ],
+  "Acto inseguro": [
+    "Juego o bromas",
+    "Intervencion de maquinas sin permiso",
+    "Intervencion de maquinas sin LOTO",
+    "Falta de permiso de trabajo",
+    "Actividades por arriba de 1.5 mts",
+    "Falta de uso de EPP",
+    "Uso incorrecto de los materiales",
+    "Violencia/ vandalismo",
+    "Ingreso y uso de celular",
+    "Ingreso bajo el efecto de alcohol o alguna sustancia.",
+    "Disposicion incorrecta de EPP",
+    "Uso incorrecto de maquinas y/o equipos",
+    "Manipulacion incorrecta de materiales.",
+    "Puesto de trabajo sin orden y limpieza",
+    "Areas comunes sin orden y limpieza",
+    "Bloqueo de equipos de emergencia",
+    "No lavar sus vasos, tazas, platos, cubiertos",
+  ],
+};
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -132,6 +143,9 @@ const collaboratorLabel = (row: NonconformanceReport) => {
 };
 
 const ReporteIncumplimientosPage = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { mode, systemMode } = useColorScheme();
   const effectiveMode = mode === "system" ? systemMode : mode;
   const isDarkMode = effectiveMode === "dark";
@@ -151,10 +165,17 @@ const ReporteIncumplimientosPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState("");
   const [employees, setEmployees] = useState<Collaborator[]>([]);
   const [formValues, setFormValues] = useState<FormValues>(INITIAL_FORM_VALUES);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const webcamRef = useRef<Webcam | null>(null);
 
   const initializeSignaturePad = useCallback(() => {
     const canvas = signatureCanvasRef.current;
@@ -216,6 +237,18 @@ const ReporteIncumplimientosPage = () => {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  useEffect(() => {
+    const searchFromUrl = searchParams.get("search")?.trim() ?? "";
+
+    if (!searchFromUrl) {
+      return;
+    }
+
+    setSearchTerm(searchFromUrl);
+    setDebouncedSearchTerm(searchFromUrl);
+    setPage(0);
+  }, [searchParams]);
 
   const loadReports = useCallback(async () => {
     try {
@@ -286,6 +319,7 @@ const ReporteIncumplimientosPage = () => {
     setStartDate("");
     setEndDate("");
     setPage(0);
+    router.replace(pathname, { scroll: false });
   };
 
   const handleDownloadExcel = async () => {
@@ -323,6 +357,8 @@ const ReporteIncumplimientosPage = () => {
 
   const handleOpenCreateDialog = () => {
     setFormValues(INITIAL_FORM_VALUES);
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
     setIsDialogOpen(true);
   };
 
@@ -333,7 +369,91 @@ const ReporteIncumplimientosPage = () => {
 
     setIsDialogOpen(false);
     setFormValues(INITIAL_FORM_VALUES);
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
     signaturePadRef.current?.clear();
+  };
+
+  const handleSelectPhotoClick = () => {
+    photoInputRef.current?.click();
+  };
+
+  const handleTakePhotoClick = () => {
+    setIsCameraDialogOpen(true);
+  };
+
+  const handleCloseCameraDialog = () => {
+    if (isSaving) {
+      return;
+    }
+
+    setIsCameraDialogOpen(false);
+  };
+
+  const handleCapturePhoto = useCallback(() => {
+    const screenshot = webcamRef.current?.getScreenshot();
+
+    if (!screenshot) {
+      notifyError("No fue posible capturar la foto. Intenta nuevamente.");
+      return;
+    }
+
+    const [meta, base64] = screenshot.split(",");
+    const mimeMatch = /data:(.*?);base64/.exec(meta);
+    const mimeType = mimeMatch?.[1] || "image/jpeg";
+
+    const byteString = atob(base64);
+    const byteNumbers = new Array(byteString.length);
+    for (let i = 0; i < byteString.length; i += 1) {
+      byteNumbers[i] = byteString.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    const extension = mimeType.includes("png") ? "png" : "jpg";
+    const file = new File([byteArray], `captura-${Date.now()}.${extension}`, {
+      type: mimeType,
+    });
+
+    setPhotoFile(file);
+    setPhotoPreviewUrl(screenshot);
+    setIsCameraDialogOpen(false);
+  }, [notifyError]);
+
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      notifyError("El archivo seleccionado debe ser una imagen.");
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+  };
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+    };
+  }, [photoPreviewUrl]);
+
+  const openImagePreview = (imageUrl?: string | null) => {
+    if (!imageUrl) {
+      return;
+    }
+
+    setSelectedImageUrl(imageUrl);
+    setIsImagePreviewOpen(true);
+  };
+
+  const closeImagePreview = () => {
+    setSelectedImageUrl("");
+    setIsImagePreviewOpen(false);
   };
 
   const handleClearSignature = () => {
@@ -353,6 +473,9 @@ const ReporteIncumplimientosPage = () => {
     formValues.deviation.trim() !== "" &&
     formValues.nonconformance.trim() !== "";
 
+  const nonconformanceOptions =
+    NONCONFORMANCE_OPTIONS_BY_DEVIATION[formValues.deviation] ?? [];
+
   const handleCreate = async (event: FormEvent<HTMLDivElement>) => {
     event.preventDefault();
 
@@ -362,6 +485,11 @@ const ReporteIncumplimientosPage = () => {
 
     if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
       notifyError("La firma es requerida para guardar el reporte.");
+      return;
+    }
+
+    if (!photoFile) {
+      notifyError("La foto es obligatoria para guardar el reporte.");
       return;
     }
 
@@ -376,9 +504,11 @@ const ReporteIncumplimientosPage = () => {
 
     try {
       setIsSaving(true);
-      await nonconformanceReportsService.create(payload);
+      await nonconformanceReportsService.create(payload, photoFile);
       setIsDialogOpen(false);
       setFormValues(INITIAL_FORM_VALUES);
+      setPhotoFile(null);
+      setPhotoPreviewUrl("");
       signaturePadRef.current?.clear();
       setPage(0);
       await loadReports();
@@ -608,6 +738,7 @@ const ReporteIncumplimientosPage = () => {
                       <TableCell>Colaborador</TableCell>
                       <TableCell>Desviacion</TableCell>
                       <TableCell>No conformidad</TableCell>
+                      <TableCell>Imagen</TableCell>
                       <TableCell>Reportado por</TableCell>
                       <TableCell>Creado</TableCell>
                     </TableRow>
@@ -615,7 +746,7 @@ const ReporteIncumplimientosPage = () => {
                   <TableBody>
                     {rows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6}>
+                        <TableCell colSpan={7}>
                           <Box sx={{ py: 4, textAlign: "center" }}>
                             <Typography variant="body2" color="text.secondary">
                               {hasActiveFilters
@@ -649,6 +780,16 @@ const ReporteIncumplimientosPage = () => {
                             >
                               {row.nonconformance}
                             </Typography>
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 80 }}>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => openImagePreview(row.imageUrl)}
+                              disabled={!row.imageUrl}
+                            >
+                              <ImageOutlinedIcon fontSize="small" />
+                            </IconButton>
                           </TableCell>
                           <TableCell sx={{ minWidth: 140 }}>
                             {row.reportedByName ?? row.reportedBy}
@@ -726,6 +867,7 @@ const ReporteIncumplimientosPage = () => {
                   setFormValues((current) => ({
                     ...current,
                     deviation: event.target.value,
+                    nonconformance: "",
                   }))
                 }
                 required
@@ -741,6 +883,7 @@ const ReporteIncumplimientosPage = () => {
                 label="No conformidad"
                 select
                 value={formValues.nonconformance}
+                disabled={!formValues.deviation}
                 onChange={(event) =>
                   setFormValues((current) => ({
                     ...current,
@@ -750,12 +893,76 @@ const ReporteIncumplimientosPage = () => {
                 required
                 fullWidth
               >
-                {NONCONFORMANCE_OPTIONS.map((option) => (
+                {nonconformanceOptions.map((option) => (
                   <MenuItem key={option} value={option}>
                     {option}
                   </MenuItem>
                 ))}
               </TextField>
+              <Stack spacing={1}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Typography variant="subtitle2">Foto de evidencia</Typography>
+                </Stack>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleSelectPhotoClick}
+                    disabled={isSaving}
+                  >
+                    Adjuntar imagen
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleTakePhotoClick}
+                    disabled={isSaving}
+                  >
+                    Tomar foto
+                  </Button>
+                </Stack>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handlePhotoChange}
+                />
+                <Box
+                  sx={{
+                    border: `1px dashed ${alpha(APP_COLORS.secondary, 0.35)}`,
+                    borderRadius: 1,
+                    p: 1,
+                    minHeight: 120,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: APP_COLORS.surface,
+                  }}
+                >
+                  {photoPreviewUrl ? (
+                    <Box
+                      component="img"
+                      src={photoPreviewUrl}
+                      alt="Vista previa de evidencia"
+                      sx={{
+                        width: "100%",
+                        maxHeight: 220,
+                        objectFit: "contain",
+                        borderRadius: 1,
+                      }}
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Debes adjuntar una foto para crear el reporte.
+                    </Typography>
+                  )}
+                </Box>
+              </Stack>
               <Stack spacing={1}>
                 <Stack
                   direction="row"
@@ -801,13 +1008,89 @@ const ReporteIncumplimientosPage = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={!isFormValid || isSaving}
+              disabled={!isFormValid || isSaving || !photoFile}
               startIcon={
                 isSaving ? <CircularProgress color="inherit" size={16} /> : null
               }
             >
               Guardar
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isCameraDialogOpen}
+          onClose={handleCloseCameraDialog}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Tomar foto</DialogTitle>
+          <DialogContent>
+            <Box
+              sx={{
+                mt: 1,
+                borderRadius: 1,
+                overflow: "hidden",
+                bgcolor: "#000",
+              }}
+            >
+              <Webcam
+                ref={webcamRef}
+                audio={false}
+                screenshotFormat="image/jpeg"
+                screenshotQuality={0.92}
+                videoConstraints={{
+                  facingMode: { ideal: "environment" },
+                }}
+                style={{ width: "100%", display: "block" }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseCameraDialog}>Cancelar</Button>
+            <Button variant="contained" onClick={handleCapturePhoto}>
+              Capturar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isImagePreviewOpen}
+          onClose={closeImagePreview}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>Imagen de evidencia</DialogTitle>
+          <DialogContent>
+            <Box
+              sx={{
+                width: "100%",
+                minHeight: 220,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {selectedImageUrl ? (
+                <Box
+                  component="img"
+                  src={selectedImageUrl}
+                  alt="Evidencia del reporte"
+                  sx={{
+                    width: "100%",
+                    maxHeight: "70vh",
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <Typography color="text.secondary">
+                  No hay imagen para este registro.
+                </Typography>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeImagePreview}>Cerrar</Button>
           </DialogActions>
         </Dialog>
       </Stack>
