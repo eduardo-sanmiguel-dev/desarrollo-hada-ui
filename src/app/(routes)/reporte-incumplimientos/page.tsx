@@ -425,7 +425,6 @@ const ReporteIncumplimientosPage = () => {
                         },
                       }}
                     >
-                      <TableCell>ID</TableCell>
                       <TableCell>Colaborador</TableCell>
                       <TableCell>Desviacion</TableCell>
                       <TableCell>No conformidad</TableCell>
@@ -450,10 +449,9 @@ const ReporteIncumplimientosPage = () => {
                     ) : (
                       rows.map((row) => (
                         <TableRow key={row.id} hover>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
-                            {row.id}
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 190 }}>
+                          <TableCell
+                            sx={{ whiteSpace: "nowrap", minWidth: 190 }}
+                          >
                             {collaboratorLabel(row)}
                           </TableCell>
                           <TableCell sx={{ maxWidth: 260 }}>
