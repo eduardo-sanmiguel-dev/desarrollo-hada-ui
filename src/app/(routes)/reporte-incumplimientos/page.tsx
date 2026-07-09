@@ -37,10 +37,7 @@ import { APP_COLORS } from "@/theme/tokens";
 import { NonconformanceReport } from "@/types/nonconformance-report.types";
 import { getHttpErrorMessage } from "@/utils/http-error";
 
-export const ALLOWED_REPORT_EMAILS = [
-  "strujillo@hadamexico.com",
-  "sst@hadamexico.com",
-] as const;
+export const ALLOWED_REPORT_EMAILS = ["strujillo@hadamexico.com"] as const;
 
 const formatDate = (value: string) => {
   const date = new Date(value);
