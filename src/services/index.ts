@@ -6,3 +6,4 @@ export * from "./nonconformance-reports.service";
 export * from "./personnel-requisition-related.service";
 export * from "./response-time-configurations.service";
 export * from "./response-time-related.service";
+export * from "./users.service";

@@ -47,6 +47,7 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
 import axios from "axios";
 import { usePermissions } from "@/hooks";
 
@@ -96,6 +97,12 @@ const menuItems: ReadonlyArray<MenuItem> = [
         href: "/configuraciones/colaboradores",
         enabled: true,
         icon: <ManageAccountsRoundedIcon sx={{ fontSize: 18 }} />,
+      },
+      {
+        label: "Usuarios",
+        href: "/configuraciones/usuarios",
+        enabled: true,
+        icon: <GroupRoundedIcon sx={{ fontSize: 18 }} />,
       },
       {
         label: "Tiempos de respuesta",
@@ -322,7 +329,9 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
             const isActive = pathname === item.href || isChildRouteActive;
             const visibleChildren =
               item.children?.filter((child) =>
-                child.enabled ? hasAccessToRoute(child.href) : true,
+                child.enabled
+                  ? hasAccessToRoute(child.href) || hasAccessToRoute(item.href)
+                  : true,
               ) ?? [];
 
             return (
