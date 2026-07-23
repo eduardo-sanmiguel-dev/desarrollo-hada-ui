@@ -1,8 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import {
   Alert,
   Box,
@@ -86,7 +94,9 @@ const ColaboradoresPage = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -248,6 +258,45 @@ const ColaboradoresPage = () => {
       await loadRows();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const openImportFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportExcel = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!selectedFile) {
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const response = await collaboratorsService.importFromExcel(selectedFile);
+      const { created, updated, skipped, errors } = response.data;
+
+      await loadRows();
+      setPage(0);
+
+      const details = `${created} creados, ${updated} actualizados, ${skipped} omitidos`;
+      const extra =
+        errors.length > 0
+          ? `. ${Math.min(errors.length, 5)} error(es): ${errors
+              .slice(0, 5)
+              .map((error) => `fila ${error.row} (${error.reason})`)
+              .join(", ")}`
+          : "";
+
+      setSuccessMessage(`Importación completada: ${details}${extra}`);
+      setTimeout(() => setSuccessMessage(null), 6000);
+    } catch (err) {
+      notifyError(getHttpErrorMessage(err, "Error al importar Excel."));
+      console.error(err);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -489,6 +538,14 @@ const ColaboradoresPage = () => {
           justifyContent="flex-end"
           sx={{ minWidth: { lg: "fit-content" } }}
         >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            style={{ display: "none" }}
+            onChange={handleImportExcel}
+          />
+
           <Button
             variant="contained"
             startIcon={<AddRoundedIcon />}
@@ -504,6 +561,26 @@ const ColaboradoresPage = () => {
             }}
           >
             Crear
+          </Button>
+
+          <Button
+            variant="outlined"
+            startIcon={
+              isImporting ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <UploadFileRoundedIcon />
+              )
+            }
+            onClick={openImportFilePicker}
+            disabled={isImporting}
+            sx={{
+              borderRadius: "12px",
+              borderColor: alpha(APP_COLORS.primary, 0.35),
+              color: "text.primary",
+            }}
+          >
+            {isImporting ? "Importando..." : "Importar Excel"}
           </Button>
 
           <Button

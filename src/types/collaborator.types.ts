@@ -54,3 +54,15 @@ export interface CollaboratorResponse {
   updatedBy?: User;
   deletedBy?: User;
 }
+
+export interface CollaboratorImportError {
+  row: number;
+  reason: string;
+}
+
+export interface CollaboratorImportResponse {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: CollaboratorImportError[];
+}

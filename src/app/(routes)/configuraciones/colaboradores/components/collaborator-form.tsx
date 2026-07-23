@@ -55,6 +55,15 @@ const formatIsoDateToDisplay = (value?: string | Date | null) => {
     return "";
   }
 
+  if (typeof value === "string") {
+    const isoDateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (isoDateOnlyMatch) {
+      const [, year, month, day] = isoDateOnlyMatch;
+      return `${day}/${month}/${year}`;
+    }
+  }
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "";

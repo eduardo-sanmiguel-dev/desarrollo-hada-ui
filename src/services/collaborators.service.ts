@@ -1,6 +1,7 @@
 import { createScopedClient } from "./http-client";
 import {
   Collaborator,
+  CollaboratorImportResponse,
   CollaboratorResponse,
   CreateCollaboratorDto,
   UpdateCollaboratorDto,
@@ -23,5 +24,19 @@ export const collaboratorsService = {
   },
   delete(id: number) {
     return httpClient.delete<{ message: string }>(`/${id}`);
+  },
+  importFromExcel(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return httpClient.post<CollaboratorImportResponse>(
+      "/import-excel",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
   },
 };
