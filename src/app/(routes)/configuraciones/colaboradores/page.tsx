@@ -573,7 +573,7 @@ const ColaboradoresPage = () => {
               )
             }
             onClick={openImportFilePicker}
-            disabled={isImporting}
+            disabled={!isImporting} // Quitar !
             sx={{
               borderRadius: "12px",
               borderColor: alpha(APP_COLORS.primary, 0.35),
